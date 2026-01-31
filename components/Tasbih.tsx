@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { RotateCcw, Check, ChevronDown, ArrowRight } from 'lucide-react';
+import { View, Text, TouchableOpacity, Vibration, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import { RotateCcw, Check, ChevronDown } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Svg, { Circle } from 'react-native-svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const PRESETS = [
     { id: 1, label: "Sübhanallah", target: 33 },
@@ -10,132 +14,339 @@ const PRESETS = [
     { id: 6, label: "Serbest Zikir", target: 9999 }
 ];
 
-const Tasbih: React.FC = () => {
-  const [count, setCount] = useState(0);
-  const [selectedPreset, setSelectedPreset] = useState(PRESETS[0]);
-  const [showPresets, setShowPresets] = useState(false);
+interface TasbihProps {
+    darkMode?: boolean;
+    onBack: () => void;
+}
 
-  // Load saved count
-  useEffect(() => {
-    const saved = localStorage.getItem('tasbihCount');
-    if (saved) setCount(parseInt(saved));
-  }, []);
+const { width } = Dimensions.get('window');
+const CIRCLE_SIZE = Math.min(width - 80, 320);
 
-  useEffect(() => {
-    localStorage.setItem('tasbihCount', count.toString());
-  }, [count]);
+const Tasbih: React.FC<TasbihProps> = ({ darkMode = false, onBack }) => {
+    const [count, setCount] = useState(0);
+    const [selectedPreset, setSelectedPreset] = useState(PRESETS[0]);
+    const [showPresets, setShowPresets] = useState(false);
 
-  const increment = () => {
-    // Vibrate if supported
-    if (navigator.vibrate) navigator.vibrate(10);
-    
-    // Check target reach
-    if (selectedPreset.id !== 6 && count + 1 === selectedPreset.target) {
-        if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
-    }
-    
-    setCount(c => c + 1);
-  };
+    const bgColor = darkMode ? '#020617' : '#fcfbf9';
+    const cardBg = darkMode ? '#1e293b' : '#ffffff';
+    const borderColor = darkMode ? '#334155' : '#e7e5e4';
+    const textPrimary = darkMode ? '#ffffff' : '#022c22';
+    const textSecondary = darkMode ? '#94a3b8' : '#78716c';
 
-  const reset = () => {
-    // Direct reset, no confirm dialog to break flow
-    // Visual feedback could be added here
-    setCount(0);
-    if (navigator.vibrate) navigator.vibrate(50);
-  };
+    useEffect(() => {
+        const loadCount = async () => {
+            const saved = await AsyncStorage.getItem('tasbihCount');
+            if (saved) setCount(parseInt(saved));
+        };
+        loadCount();
+    }, []);
 
-  const changePreset = (preset: typeof PRESETS[0]) => {
-      setSelectedPreset(preset);
-      setCount(0);
-      setShowPresets(false);
-  };
+    useEffect(() => {
+        AsyncStorage.setItem('tasbihCount', count.toString());
+    }, [count]);
 
-  const progress = Math.min((count % selectedPreset.target) / selectedPreset.target * 100, 100);
-  const isTargetReached = selectedPreset.id !== 6 && count >= selectedPreset.target;
+    const increment = () => {
+        Vibration.vibrate(10);
+        if (selectedPreset.id !== 6 && count + 1 === selectedPreset.target) {
+            Vibration.vibrate([50, 50, 50]);
+        }
+        setCount(c => c + 1);
+    };
 
-  return (
-    <div className="min-h-screen bg-sand-50 dark:bg-night-950 flex flex-col items-center pt-8 pb-32 px-6 transition-colors duration-500">
-        
-        {/* Preset Selector */}
-        <div className="relative z-20 mb-10 w-full max-w-xs">
-            <button 
-                onClick={() => setShowPresets(!showPresets)}
-                className="w-full flex items-center justify-between bg-white dark:bg-night-800 border border-stone-200 dark:border-night-700 px-5 py-4 rounded-2xl shadow-sm active:scale-95 transition-all"
-            >
-                <div className="text-left">
-                    <span className="text-xs text-stone-400 dark:text-slate-500 font-bold uppercase tracking-wider block mb-0.5">Seçili Zikir</span>
-                    <span className="text-emerald-950 dark:text-white font-bold text-lg">{selectedPreset.label}</span>
-                </div>
-                <ChevronDown className={`text-stone-400 transition-transform ${showPresets ? 'rotate-180' : ''}`} />
-            </button>
+    const reset = () => {
+        setCount(0);
+        Vibration.vibrate(50);
+    };
 
-            {showPresets && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-night-800 border border-stone-200 dark:border-night-700 rounded-2xl shadow-xl overflow-hidden animate-fade-in max-h-64 overflow-y-auto z-50">
-                    {PRESETS.map(p => (
-                        <button
-                            key={p.id}
-                            onClick={() => changePreset(p)}
-                            className="w-full flex items-center justify-between px-5 py-3 hover:bg-stone-50 dark:hover:bg-night-700 border-b border-stone-100 dark:border-night-700 last:border-0 text-left transition-colors"
-                        >
-                            <span className={`font-medium ${selectedPreset.id === p.id ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'}`}>{p.label}</span>
-                            {selectedPreset.id === p.id && <Check size={16} className="text-emerald-600" />}
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
+    const changePreset = (preset: typeof PRESETS[0]) => {
+        setSelectedPreset(preset);
+        setCount(0);
+        setShowPresets(false);
+    };
 
-        {/* Counter UI */}
-        <div className="w-full max-w-xs aspect-square relative flex items-center justify-center mb-12">
-            {/* Background Glow */}
-            <div className={`absolute inset-0 bg-emerald-500/5 rounded-full blur-3xl transition-all duration-500 ${isTargetReached ? 'bg-emerald-500/30 scale-110' : ''}`}></div>
+    const progress = Math.min((count % selectedPreset.target) / selectedPreset.target * 100, 100);
+    const isTargetReached = selectedPreset.id !== 6 && count >= selectedPreset.target;
 
-            {/* Background Ring */}
-            <div className="absolute inset-0 rounded-full border-[24px] border-stone-100 dark:border-night-800"></div>
-            
-            {/* Progress Ring (SVG) */}
-            <svg className="absolute inset-0 w-full h-full transform -rotate-90 pointer-events-none">
-                <circle
-                    cx="50%"
-                    cy="50%"
-                    r="43%" 
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="24"
-                    strokeLinecap="round"
-                    strokeDasharray="270%" 
-                    strokeDashoffset={`${270 - (progress / 100 * 270)}%`}
-                    className={`transition-all duration-300 ease-out ${isTargetReached ? 'text-emerald-500' : 'text-emerald-500/80 dark:text-emerald-500/60'}`}
-                />
-            </svg>
+    const radius = (CIRCLE_SIZE - 48) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (progress / 100) * circumference;
 
-            {/* Click Button */}
-            <button 
-                onClick={increment}
-                className="w-48 h-48 rounded-full bg-white dark:bg-night-800 shadow-[0_15px_40px_-10px_rgba(0,0,0,0.1)] dark:shadow-black/50 border border-stone-50 dark:border-night-700 flex flex-col items-center justify-center active:scale-95 active:shadow-inner transition-all duration-100 group z-10"
-            >
-                <span className="text-6xl font-bold text-emerald-950 dark:text-white font-mono tabular-nums tracking-tighter group-active:scale-110 transition-transform">
-                    {count}
-                </span>
-                <span className="text-xs text-stone-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-2">
-                   Hedef: {selectedPreset.target}
-                </span>
-            </button>
-        </div>
+    return (
+        <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
+            {/* Back Button Header */}
+            <View style={styles.header}>
+                <TouchableOpacity
+                    onPress={onBack}
+                    style={[styles.backButton, { backgroundColor: cardBg, borderColor }]}
+                >
+                    <ChevronDown size={24} color={textSecondary} style={{ transform: [{ rotate: '90deg' }] }} />
+                </TouchableOpacity>
+                <Text style={[styles.headerTitle, { color: textPrimary }]}>Zikirmatik</Text>
+                <View style={{ width: 44 }} />
+            </View>
 
-        {/* Controls */}
-        <div className="flex gap-4">
-            <button 
-                onClick={reset}
-                className="flex items-center gap-2 px-6 py-4 rounded-2xl bg-stone-100 dark:bg-night-800 border border-stone-200 dark:border-night-700 text-stone-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors shadow-sm active:scale-95"
-            >
-                <RotateCcw size={20} />
-                <span className="font-bold text-sm">Sıfırla</span>
-            </button>
-        </div>
+            {/* Preset Selector */}
+            <View style={styles.presetContainer}>
+                <TouchableOpacity
+                    onPress={() => setShowPresets(!showPresets)}
+                    style={[styles.presetButton, { backgroundColor: cardBg, borderColor }]}
+                    activeOpacity={0.9}
+                >
+                    <View>
+                        <Text style={[styles.presetLabel, { color: textSecondary }]}>SEÇİLİ ZİKİR</Text>
+                        <Text style={[styles.presetValue, { color: textPrimary }]}>{selectedPreset.label}</Text>
+                    </View>
+                    <ChevronDown
+                        size={20}
+                        color={textSecondary}
+                        style={{ transform: [{ rotate: showPresets ? '180deg' : '0deg' }] }}
+                    />
+                </TouchableOpacity>
 
-    </div>
-  );
+                {showPresets && (
+                    <View style={[styles.presetDropdown, { backgroundColor: cardBg, borderColor }]}>
+                        <ScrollView nestedScrollEnabled style={styles.presetScroll}>
+                            {PRESETS.map((p, index) => (
+                                <TouchableOpacity
+                                    key={p.id}
+                                    onPress={() => changePreset(p)}
+                                    style={[
+                                        styles.presetOption,
+                                        { borderBottomColor: borderColor },
+                                        index === PRESETS.length - 1 && styles.presetOptionLast
+                                    ]}
+                                >
+                                    <Text style={[
+                                        styles.presetOptionText,
+                                        { color: selectedPreset.id === p.id ? '#059669' : textSecondary }
+                                    ]}>
+                                        {p.label}
+                                    </Text>
+                                    {selectedPreset.id === p.id && <Check size={16} color="#059669" />}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
+            </View>
+
+            {/* Counter UI */}
+            <View style={styles.counterContainer}>
+                <View style={[styles.circleWrapper, { width: CIRCLE_SIZE, height: CIRCLE_SIZE }]}>
+                    {/* Background Glow */}
+                    <View style={[
+                        styles.glow,
+                        {
+                            width: CIRCLE_SIZE,
+                            height: CIRCLE_SIZE,
+                            backgroundColor: isTargetReached ? 'rgba(16,185,129,0.2)' : 'rgba(16,185,129,0.05)',
+                        }
+                    ]} />
+
+                    {/* Background Ring */}
+                    <View style={[
+                        styles.backgroundRing,
+                        {
+                            width: CIRCLE_SIZE,
+                            height: CIRCLE_SIZE,
+                            borderColor: darkMode ? '#1e293b' : '#f5f5f4'
+                        }
+                    ]} />
+
+                    {/* Progress Ring */}
+                    <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE} style={styles.progressSvg}>
+                        <Circle
+                            cx={CIRCLE_SIZE / 2}
+                            cy={CIRCLE_SIZE / 2}
+                            r={radius}
+                            fill="none"
+                            stroke={isTargetReached ? '#10b981' : 'rgba(16,185,129,0.8)'}
+                            strokeWidth="24"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={strokeDashoffset}
+                            strokeLinecap="round"
+                            rotation="-90"
+                            origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`}
+                        />
+                    </Svg>
+
+                    {/* Click Button */}
+                    <TouchableOpacity
+                        onPress={increment}
+                        activeOpacity={0.9}
+                        style={[styles.clickButton, { backgroundColor: cardBg, borderColor: darkMode ? '#334155' : '#fafaf9' }]}
+                    >
+                        <Text style={[styles.countText, { color: textPrimary }]}>{count}</Text>
+                        <Text style={[styles.targetText, { color: textSecondary }]}>
+                            HEDEF: {selectedPreset.target}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* Controls */}
+            <View style={styles.controls}>
+                <TouchableOpacity
+                    onPress={reset}
+                    style={[styles.resetButton, { backgroundColor: darkMode ? '#1e293b' : '#f5f5f4', borderColor }]}
+                    activeOpacity={0.8}
+                >
+                    <RotateCcw size={20} color={textSecondary} />
+                    <Text style={[styles.resetText, { color: textSecondary }]}>Sıfırla</Text>
+                </TouchableOpacity>
+            </View>
+        </SafeAreaView>
+    );
 };
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        alignItems: 'center',
+        paddingTop: 60,
+    },
+    presetContainer: {
+        width: '100%',
+        maxWidth: 320,
+        paddingHorizontal: 24,
+        marginBottom: 40,
+        zIndex: 20,
+    },
+    presetButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
+        paddingHorizontal: 24,
+        marginBottom: 16,
+    },
+    backButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+    },
+    presetLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 1,
+        marginBottom: 4,
+    },
+    presetValue: {
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    presetDropdown: {
+        position: 'absolute',
+        top: '100%',
+        left: 24,
+        right: 24,
+        marginTop: 8,
+        borderRadius: 16,
+        borderWidth: 1,
+        maxHeight: 256,
+        overflow: 'hidden',
+        zIndex: 50,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 24,
+        elevation: 10,
+    },
+    presetScroll: {
+        maxHeight: 256,
+    },
+    presetOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+    },
+    presetOptionLast: {
+        borderBottomWidth: 0,
+    },
+    presetOptionText: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    counterContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    circleWrapper: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    glow: {
+        position: 'absolute',
+        borderRadius: 1000,
+    },
+    backgroundRing: {
+        position: 'absolute',
+        borderRadius: 1000,
+        borderWidth: 24,
+    },
+    progressSvg: {
+        position: 'absolute',
+    },
+    clickButton: {
+        width: 192,
+        height: 192,
+        borderRadius: 96,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 16 },
+        shadowOpacity: 0.1,
+        shadowRadius: 40,
+        elevation: 10,
+    },
+    countText: {
+        fontSize: 64,
+        fontWeight: '700',
+        fontVariant: ['tabular-nums'],
+    },
+    targetText: {
+        fontSize: 11,
+        fontWeight: '700',
+        letterSpacing: 2,
+        marginTop: 8,
+    },
+    controls: {
+        paddingBottom: 48,
+    },
+    resetButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+    },
+    resetText: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+});
 
 export default Tasbih;

@@ -45,11 +45,9 @@ export interface DualSurahResponse {
 
 export interface Hadith {
   id: number;
-  source: string;
+  source: 'Bukhari' | 'Muslim' | 'Riyad as-Salihin' | 'Tirmidhi';
   text: string;
   topic?: string;
-  book?: string;
-  number?: number;
 }
 
 export interface TevafukContent {

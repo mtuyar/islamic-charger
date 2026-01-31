@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "RuhUp",
+    "slug": "ruhup",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#065f46"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.huzur.islamic",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.huzur.islamic",
+      "edgeToEdgeEnabled": true
+    },
+    "notification": {
+      "icon": "./assets/icon.png",
+      "color": "#065f46"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "68b162db-60e3-47c3-a69d-22d28bcf6a51"
+      }
+    }
+  }
+}

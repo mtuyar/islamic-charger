@@ -1,153 +1,399 @@
 import React, { useMemo, useState } from 'react';
+import { View, Text, TouchableOpacity, TextInput, FlatList, StyleSheet, Dimensions } from 'react-native';
 import { Surah } from '../types';
-import { Search, BookOpen, Clock, ChevronRight, Mountain, Moon, Sparkles, LayoutGrid, List } from 'lucide-react';
+import { Search, BookOpen, ChevronLeft, LayoutGrid, List } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { width } = Dimensions.get('window');
+const JUZ_CARD_WIDTH = (width - 48 - 12) / 2;
 
 interface QuranLibraryProps {
-  surahs: Surah[];
-  onOpenSurah: (id: number) => void;
-  lastReadSurahId: number | null;
-  onBack: () => void;
+    surahs: Surah[];
+    onOpenSurah: (id: number) => void;
+    lastReadSurahId: number | null;
+    onBack: () => void;
+    darkMode?: boolean;
 }
 
-const QuranLibrary: React.FC<QuranLibraryProps> = ({ surahs, onOpenSurah, lastReadSurahId, onBack }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'surah' | 'juz'>('surah');
+const QuranLibrary: React.FC<QuranLibraryProps> = ({ surahs, onOpenSurah, lastReadSurahId, onBack, darkMode = false }) => {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeTab, setActiveTab] = useState<'surah' | 'juz'>('surah');
 
-  // Generate Juz List (Mock data for display logic, mapped to likely starting Surah)
-  // In a real app, this would need accurate page/ayah mapping.
-  const juzs = useMemo(() => Array.from({ length: 30 }, (_, i) => ({ id: i + 1, label: `${i + 1}. Cüz` })), []);
+    const bgColor = darkMode ? '#020617' : '#fcfbf9';
+    const cardBg = darkMode ? '#1e293b' : '#ffffff';
+    const borderColor = darkMode ? '#334155' : '#f5f5f4';
+    const textPrimary = darkMode ? '#ffffff' : '#1c1917';
+    const textSecondary = darkMode ? '#94a3b8' : '#78716c';
+    const inputBg = darkMode ? '#0f172a' : '#ffffff';
 
-  const filteredSurahs = useMemo(() => {
-    const query = searchQuery.toLowerCase().trim();
-    if (!query) return surahs;
-    return surahs.filter(s => 
-        s.englishName.toLowerCase().includes(query) || 
-        s.name.includes(query) || 
-        s.number.toString() === query
+    const juzs = useMemo(() => Array.from({ length: 30 }, (_, i) => ({ id: i + 1, label: `${i + 1}. Cüz` })), []);
+
+    const filteredSurahs = useMemo(() => {
+        const query = searchQuery.toLowerCase().trim();
+        if (!query) return surahs;
+        return surahs.filter(s =>
+            s.englishName.toLowerCase().includes(query) ||
+            s.name.includes(query) ||
+            s.number.toString() === query
+        );
+    }, [surahs, searchQuery]);
+
+    const lastReadSurah = useMemo(() =>
+        surahs.find(s => s.number === lastReadSurahId),
+        [surahs, lastReadSurahId]);
+
+    const renderSurahItem = ({ item: surah }: { item: Surah }) => (
+        <TouchableOpacity
+            onPress={() => onOpenSurah(surah.number)}
+            style={[styles.surahCard, { backgroundColor: cardBg, borderColor }]}
+            activeOpacity={0.9}
+        >
+            <View style={[styles.surahNumber, { backgroundColor: darkMode ? '#0f172a' : '#fafaf9' }]}>
+                <Text style={[styles.surahNumberText, { color: darkMode ? '#34d399' : '#047857' }]}>
+                    {surah.number}
+                </Text>
+            </View>
+
+            <View style={styles.surahInfo}>
+                <View style={styles.surahNameRow}>
+                    <Text style={[styles.surahName, { color: textPrimary }]}>{surah.englishName}</Text>
+                    <Text style={[styles.surahArabic, { color: darkMode ? '#475569' : '#d6d3d1' }]}>
+                        {surah.name}
+                    </Text>
+                </View>
+                <View style={styles.surahMeta}>
+                    <Text style={[styles.surahMetaText, { color: textSecondary }]}>
+                        {surah.revelationType === 'Meccan' ? 'Mekke' : 'Medine'}
+                    </Text>
+                    <View style={[styles.metaDot, { backgroundColor: darkMode ? '#475569' : '#d6d3d1' }]} />
+                    <Text style={[styles.surahMetaText, { color: textSecondary }]}>{surah.numberOfAyahs} Ayet</Text>
+                </View>
+            </View>
+        </TouchableOpacity>
     );
-  }, [surahs, searchQuery]);
 
-  const lastReadSurah = useMemo(() => 
-    surahs.find(s => s.number === lastReadSurahId), 
-  [surahs, lastReadSurahId]);
+    const renderJuzItem = ({ item: juz }: { item: { id: number; label: string } }) => (
+        <TouchableOpacity
+            onPress={() => onOpenSurah(1)}
+            style={[styles.juzCard, { backgroundColor: cardBg, borderColor }]}
+            activeOpacity={0.9}
+        >
+            <Text style={[styles.juzLabel, { color: textPrimary }]}>{juz.label}</Text>
+            <Text style={[styles.juzAction, { color: textSecondary }]}>Başla</Text>
+        </TouchableOpacity>
+    );
 
-  return (
-    <div className="min-h-screen bg-sand-50 dark:bg-night-950 animate-slide-up transition-colors duration-500 pb-12">
-        
-        {/* Sticky Header */}
-        <div className="sticky top-0 z-20 bg-sand-50/95 dark:bg-night-950/95 backdrop-blur-md px-6 pt-6 pb-4 border-b border-stone-100 dark:border-slate-800">
-            <div className="flex items-center gap-4 mb-6">
-                <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-600 dark:text-slate-300 transition-colors">
-                    <ChevronRight size={24} className="rotate-180" />
-                </button>
-                <h1 className="text-2xl font-bold text-emerald-950 dark:text-emerald-400 font-serif">Kuran Kütüphanesi</h1>
-            </div>
+    return (
+        <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
+            {/* Header */}
+            <View style={[styles.header, { backgroundColor: bgColor, borderBottomColor: borderColor }]}>
+                <View style={styles.headerTop}>
+                    <TouchableOpacity
+                        onPress={onBack}
+                        style={[styles.backButton, { backgroundColor: darkMode ? '#1e293b' : '#f5f5f4' }]}
+                    >
+                        <ChevronLeft size={24} color={textSecondary} />
+                    </TouchableOpacity>
+                    <Text style={[styles.headerTitle, { color: darkMode ? '#34d399' : '#022c22' }]}>
+                        Kuran Kütüphanesi
+                    </Text>
+                </View>
 
-            {/* Search */}
-            <div className="relative mb-6">
-                <input 
-                    type="text" 
-                    placeholder="Sure veya cüz ara..." 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl py-4 pl-12 pr-4 text-stone-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-stone-400"
-                />
-                <Search className="absolute left-4 top-4 text-stone-400" size={20} />
-            </div>
+                {/* Search */}
+                <View style={styles.searchContainer}>
+                    <View style={[styles.searchInput, { backgroundColor: inputBg, borderColor }]}>
+                        <Search size={20} color={textSecondary} />
+                        <TextInput
+                            placeholder="Sure veya cüz ara..."
+                            placeholderTextColor={textSecondary}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            style={[styles.searchTextInput, { color: textPrimary }]}
+                        />
+                    </View>
+                </View>
 
-            {/* Tabs */}
-            <div className="flex p-1 bg-stone-100 dark:bg-night-800 rounded-xl">
-                <button 
-                    onClick={() => setActiveTab('surah')}
-                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'surah' ? 'bg-white dark:bg-night-700 shadow-sm text-emerald-700 dark:text-emerald-400' : 'text-stone-500 dark:text-slate-500'}`}
-                >
-                    <List size={16} />
-                    <span>Sureler</span>
-                </button>
-                <button 
-                    onClick={() => setActiveTab('juz')}
-                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'juz' ? 'bg-white dark:bg-night-700 shadow-sm text-emerald-700 dark:text-emerald-400' : 'text-stone-500 dark:text-slate-500'}`}
-                >
-                    <LayoutGrid size={16} />
-                    <span>Cüzler</span>
-                </button>
-            </div>
-        </div>
+                {/* Tabs */}
+                <View style={[styles.tabs, { backgroundColor: darkMode ? '#1e293b' : '#f5f5f4' }]}>
+                    <TouchableOpacity
+                        onPress={() => setActiveTab('surah')}
+                        style={[
+                            styles.tab,
+                            activeTab === 'surah' && [styles.tabActive, { backgroundColor: cardBg }]
+                        ]}
+                    >
+                        <List size={16} color={activeTab === 'surah' ? '#047857' : textSecondary} />
+                        <Text style={[
+                            styles.tabText,
+                            { color: activeTab === 'surah' ? '#047857' : textSecondary }
+                        ]}>Sureler</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setActiveTab('juz')}
+                        style={[
+                            styles.tab,
+                            activeTab === 'juz' && [styles.tabActive, { backgroundColor: cardBg }]
+                        ]}
+                    >
+                        <LayoutGrid size={16} color={activeTab === 'juz' ? '#047857' : textSecondary} />
+                        <Text style={[
+                            styles.tabText,
+                            { color: activeTab === 'juz' ? '#047857' : textSecondary }
+                        ]}>Cüzler</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
 
-        <div className="px-6 mt-6 space-y-8">
-            
-            {/* Last Read (Only on Surah tab & no search) */}
-            {activeTab === 'surah' && !searchQuery && lastReadSurah && (
-                <div className="bg-gradient-to-br from-emerald-900 to-emerald-950 rounded-[2rem] p-6 relative overflow-hidden shadow-xl shadow-emerald-900/20 group cursor-pointer" onClick={() => onOpenSurah(lastReadSurah.number)}>
-                    <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl -mr-12 -mt-12 group-hover:bg-white/10 transition-colors"></div>
-                    
-                    <div className="flex items-center gap-2 mb-4 relative z-10">
-                         <div className="px-2 py-0.5 rounded-md bg-white/10 border border-white/5 text-[10px] font-bold text-emerald-100 uppercase tracking-wider">Son Okunan</div>
-                    </div>
-                    
-                    <div className="flex justify-between items-end relative z-10">
-                        <div>
-                            <h3 className="text-white font-serif text-2xl font-bold mb-1">{lastReadSurah.englishName}</h3>
-                            <p className="text-emerald-200/60 text-sm">Kaldığınız yerden devam edin</p>
-                        </div>
-                        <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
-                            <BookOpen size={18} />
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* List Content */}
-            <div className="space-y-3">
-                {activeTab === 'surah' ? (
-                    filteredSurahs.map((surah) => (
-                        <button 
-                            key={surah.number}
-                            onClick={() => onOpenSurah(surah.number)}
-                            className="w-full bg-white dark:bg-night-800 p-4 rounded-[1.5rem] border border-stone-100 dark:border-night-700 shadow-sm hover:shadow-md transition-all flex items-center gap-4 text-left group active:scale-[0.99]"
-                        >
-                            <div className="w-12 h-12 flex-shrink-0 bg-stone-50 dark:bg-night-900 rounded-2xl flex items-center justify-center text-emerald-700 dark:text-emerald-500 font-bold font-sans text-sm group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/20 transition-colors">
-                                {surah.number}
-                            </div>
-                            
-                            <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-center mb-1">
-                                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">{surah.englishName}</h3>
-                                    <span className="font-arabic text-xl text-stone-300 dark:text-slate-600 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
-                                        {surah.name}
-                                    </span>
-                                </div>
-                                
-                                <div className="flex items-center gap-3 text-xs text-stone-400 dark:text-slate-500 font-medium">
-                                    <span className="flex items-center gap-1">
-                                        {surah.revelationType === 'Meccan' ? 'Mekke' : 'Medine'}
-                                    </span>
-                                    <span className="w-1 h-1 rounded-full bg-stone-300 dark:bg-slate-700"></span>
-                                    <span>{surah.numberOfAyahs} Ayet</span>
-                                </div>
-                            </div>
-                        </button>
-                    ))
-                ) : (
-                    <div className="grid grid-cols-2 gap-3">
-                        {juzs.map((juz) => (
-                            <button
-                                key={juz.id}
-                                // For now, Juz click just opens the first Surah (Approximation for prototype)
-                                // In a real app, this maps to specific page/ayah
-                                onClick={() => onOpenSurah(1)} 
-                                className="bg-white dark:bg-night-800 p-6 rounded-[1.5rem] border border-stone-100 dark:border-night-700 shadow-sm hover:border-emerald-500 dark:hover:border-emerald-500 transition-all text-center group"
+            {/* Content */}
+            {activeTab === 'surah' ? (
+                <FlatList
+                    key="surah-list"
+                    data={filteredSurahs}
+                    keyExtractor={(item) => item.number.toString()}
+                    renderItem={renderSurahItem}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                    ListHeaderComponent={
+                        !searchQuery && lastReadSurah ? (
+                            <TouchableOpacity
+                                onPress={() => onOpenSurah(lastReadSurah.number)}
+                                style={styles.lastReadCard}
+                                activeOpacity={0.9}
                             >
-                                <span className="block text-emerald-950 dark:text-white font-bold text-lg mb-1">{juz.label}</span>
-                                <span className="text-xs text-stone-400 dark:text-slate-500 font-medium">Başla</span>
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div>
-        </div>
-    </div>
-  );
+                                <LinearGradient
+                                    colors={['#064e3b', '#022c22']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={styles.lastReadGradient}
+                                >
+                                    <View style={styles.lastReadBadge}>
+                                        <Text style={styles.lastReadBadgeText}>SON OKUNAN</Text>
+                                    </View>
+
+                                    <View style={styles.lastReadContent}>
+                                        <View>
+                                            <Text style={styles.lastReadTitle}>{lastReadSurah.englishName}</Text>
+                                            <Text style={styles.lastReadSubtitle}>Kaldığınız yerden devam edin</Text>
+                                        </View>
+                                        <View style={styles.lastReadIcon}>
+                                            <BookOpen size={18} color="#ffffff" />
+                                        </View>
+                                    </View>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        ) : null
+                    }
+                />
+            ) : (
+                <FlatList
+                    key="juz-list"
+                    data={juzs}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={renderJuzItem}
+                    numColumns={2}
+                    columnWrapperStyle={styles.juzRow}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                />
+            )}
+        </SafeAreaView>
+    );
 };
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    header: {
+        paddingHorizontal: 24,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+    },
+    headerTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+        marginBottom: 24,
+    },
+    backButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+    },
+    searchContainer: {
+        marginBottom: 16,
+    },
+    searchInput: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderRadius: 16,
+        borderWidth: 1,
+    },
+    searchTextInput: {
+        flex: 1,
+        fontSize: 16,
+        padding: 0,
+    },
+    tabs: {
+        flexDirection: 'row',
+        padding: 4,
+        borderRadius: 12,
+    },
+    tab: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 10,
+        borderRadius: 8,
+    },
+    tabActive: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    tabText: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    listContent: {
+        padding: 24,
+        gap: 12,
+    },
+    lastReadCard: {
+        borderRadius: 32,
+        overflow: 'hidden',
+        marginBottom: 24,
+        shadowColor: '#064e3b',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+        elevation: 8,
+    },
+    lastReadGradient: {
+        padding: 24,
+    },
+    lastReadBadge: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        marginBottom: 16,
+    },
+    lastReadBadgeText: {
+        fontSize: 9,
+        fontWeight: '700',
+        color: '#d1fae5',
+        letterSpacing: 1,
+    },
+    lastReadContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+    },
+    lastReadTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#ffffff',
+        marginBottom: 4,
+    },
+    lastReadSubtitle: {
+        fontSize: 14,
+        color: 'rgba(167,243,208,0.6)',
+    },
+    lastReadIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#10b981',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    surahCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+        padding: 16,
+        borderRadius: 24,
+        borderWidth: 1,
+        marginBottom: 12,
+    },
+    surahNumber: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    surahNumberText: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    surahInfo: {
+        flex: 1,
+    },
+    surahNameRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    surahName: {
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    surahArabic: {
+        fontSize: 20,
+        fontFamily: 'ScheherazadeNew_400Regular',
+    },
+    surahMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    surahMetaText: {
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    metaDot: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+    },
+    juzRow: {
+        gap: 12,
+    },
+    juzCard: {
+        width: JUZ_CARD_WIDTH,
+        padding: 24,
+        borderRadius: 24,
+        borderWidth: 1,
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    juzLabel: {
+        fontSize: 18,
+        fontWeight: '700',
+        marginBottom: 4,
+    },
+    juzAction: {
+        fontSize: 12,
+        fontWeight: '500',
+    },
+});
 
 export default QuranLibrary;

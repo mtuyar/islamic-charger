@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, Sparkles, Heart, Activity, Book, Disc, ScrollText, ArrowRight } from 'lucide-react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import { Moon, Sun, Sparkles, Activity, Book, Disc, ScrollText, ArrowRight, BookOpen, RefreshCw } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import TevafukCard from './TevafukCard';
 import PrayerTimesWidget from './PrayerTimesWidget';
 import { TevafukContent, Esma } from '../types';
 import { getRandomEsma } from '../services/api';
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 48 - 16) / 2; // padding 24*2 + gap 16
 
 interface HomeMenuProps {
   tevafukContent: TevafukContent | null;
@@ -14,9 +20,9 @@ interface HomeMenuProps {
   onNavigate: (page: any) => void;
 }
 
-const HomeMenu: React.FC<HomeMenuProps> = ({ 
-  tevafukContent, 
-  loadingTevafuk, 
+const HomeMenu: React.FC<HomeMenuProps> = ({
+  tevafukContent,
+  loadingTevafuk,
   onRefreshTevafuk,
   darkMode,
   toggleDarkMode,
@@ -24,126 +30,378 @@ const HomeMenu: React.FC<HomeMenuProps> = ({
 }) => {
   const [dailyEsma, setDailyEsma] = useState<Esma | null>(null);
 
+  const bgColor = darkMode ? '#020617' : '#fcfbf9';
+  const textPrimary = darkMode ? '#34d399' : '#022c22';
+  const textSecondary = darkMode ? '#94a3b8' : '#78716c';
+  const cardBg = darkMode ? '#1e293b' : '#ffffff';
+  const borderColor = darkMode ? '#334155' : '#f5f5f4';
+
   useEffect(() => {
     setDailyEsma(getRandomEsma());
   }, []);
 
   return (
-    <div className="min-h-screen bg-sand-50 dark:bg-night-950 px-6 pt-10 pb-12 transition-colors duration-500 flex flex-col">
-      
-      {/* Top Header */}
-      <header className="flex justify-between items-center mb-8">
-        <div className="animate-slide-up">
-           <h1 className="text-3xl font-bold text-emerald-950 dark:text-emerald-400 tracking-tight font-serif">
-             Huzur
-           </h1>
-           <p className="text-stone-500 dark:text-slate-400 text-xs font-medium tracking-wide">
-             Hoşgeldin, Bugünün Hayırlı Olsun
-           </p>
-        </div>
-        <button 
-           onClick={toggleDarkMode}
-           className="w-10 h-10 flex items-center justify-center rounded-full glass-panel border border-stone-200 dark:border-white/10 shadow-sm active:scale-95 transition-all text-stone-500 dark:text-amber-400"
-        >
-           {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-      </header>
+    <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Top Header with Greeting */}
+        <View style={styles.header}>
+          <View style={styles.greetingContainer}>
+            <Text style={[styles.turkishGreeting, { color: textPrimary }]}>
+              Esselâmü Aleyküm
+            </Text>
+            <Text style={[styles.subtitle, { color: textSecondary }]}>
+              Hayırlı günler, bereketli vakitler
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={toggleDarkMode}
+            style={[styles.themeButton, {
+              backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.9)',
+              borderColor: darkMode ? 'rgba(255,255,255,0.1)' : '#e7e5e4'
+            }]}
+          >
+            {darkMode ? <Sun size={20} color="#fbbf24" /> : <Moon size={20} color="#78716c" />}
+          </TouchableOpacity>
+        </View>
 
-      <div className="space-y-8 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          
-          {/* Prayer Widget (Primary Dashboard Item) */}
-          <section>
-              <PrayerTimesWidget />
-          </section>
+        {/* Prayer Widget */}
+        <View style={styles.section}>
+          <PrayerTimesWidget darkMode={darkMode} />
+        </View>
 
-          {/* Main Actions Grid (The "Soft" Menu) */}
-          <section className="grid grid-cols-2 gap-4">
-              
-              {/* Quran Card - Large */}
-              <button 
-                onClick={() => onNavigate('quran')}
-                className="col-span-2 relative h-32 bg-gradient-to-r from-emerald-800 to-emerald-950 rounded-[2rem] p-6 flex items-center justify-between shadow-xl shadow-emerald-900/20 active:scale-[0.98] transition-all group overflow-hidden"
+        {/* Main Actions Grid */}
+        <View style={styles.section}>
+          {/* Quran Card - Large */}
+          <TouchableOpacity
+            onPress={() => onNavigate('quran')}
+            style={styles.quranCard}
+            activeOpacity={0.9}
+          >
+            <LinearGradient
+              colors={['#065f46', '#022c22']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.quranGradient}
+            >
+              <View style={styles.quranContent}>
+                <View style={styles.quranIconContainer}>
+                  <Book color="#d1fae5" size={28} strokeWidth={1.5} />
+                </View>
+                <View>
+                  <Text style={styles.quranTitle}>Kuran-ı</Text>
+                  <Text style={styles.quranTitle}>Kerim</Text>
+                </View>
+              </View>
+              <View style={styles.quranArrow}>
+                <ArrowRight size={20} color="#d1fae5" />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Small Cards Row */}
+          <View style={styles.smallCardsRow}>
+            {/* Tasbih Card */}
+            <TouchableOpacity
+              onPress={() => onNavigate('tasbih')}
+              style={[styles.smallCard, { backgroundColor: cardBg, borderColor }]}
+              activeOpacity={0.9}
+            >
+              <View style={[styles.smallCardIcon, { backgroundColor: darkMode ? 'rgba(16,185,129,0.15)' : '#ecfdf5' }]}>
+                <Activity size={24} strokeWidth={1.5} color={darkMode ? '#34d399' : '#059669'} />
+              </View>
+              <View>
+                <Text style={[styles.smallCardLabel, { color: textSecondary }]}>ZİKİR</Text>
+                <Text style={[styles.smallCardTitle, { color: darkMode ? '#e2e8f0' : '#1c1917' }]}>Zikirmatik</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Hadith Card */}
+            <TouchableOpacity
+              onPress={() => onNavigate('hadith')}
+              style={[styles.smallCard, { backgroundColor: cardBg, borderColor }]}
+              activeOpacity={0.9}
+            >
+              <View style={[styles.smallCardIcon, { backgroundColor: darkMode ? 'rgba(99,102,241,0.15)' : '#eef2ff' }]}>
+                <BookOpen size={24} strokeWidth={1.5} color={darkMode ? '#818cf8' : '#4f46e5'} />
+              </View>
+              <View>
+                <Text style={[styles.smallCardLabel, { color: textSecondary }]}>İLİM</Text>
+                <Text style={[styles.smallCardTitle, { color: darkMode ? '#e2e8f0' : '#1c1917' }]}>Hadisler</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Daily Content (Tevafuk) */}
+        {/* Daily Content (Tevafuk) */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Sparkles size={16} color="#f59e0b" fill="#f59e0b" />
+            <Text style={[styles.sectionLabel, { color: textSecondary }]}>
+              {loadingTevafuk ? "NASİP GELİYOR..." : "GÜNÜN NASİBİ"}
+            </Text>
+          </View>
+          <TevafukCard
+            content={tevafukContent}
+            loading={loadingTevafuk}
+            onRefresh={onRefreshTevafuk}
+            darkMode={darkMode}
+          />
+        </View>
+
+        {/* Esma-ul Husna Mini Widget */}
+        {dailyEsma && (
+          <TouchableOpacity
+            onPress={() => onNavigate('esma')}
+            style={[styles.esmaCard, {
+              backgroundColor: darkMode ? '#1e293b' : '#ffffff',
+              borderColor
+            }]}
+            activeOpacity={0.9}
+          >
+            <View style={styles.esmaHeader}>
+              <View style={[styles.esmaNumberBadge, { backgroundColor: darkMode ? 'rgba(16,185,129,0.2)' : '#ecfdf5' }]}>
+                <Text style={styles.esmaNumber}>{dailyEsma.id}</Text>
+              </View>
+
+              {/* Refresh Esma Button */}
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  const newEsma = getRandomEsma();
+                  setDailyEsma(newEsma);
+                }}
+                style={[styles.esmaRefreshButton, { backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : '#f5f5f4' }]}
               >
-                  <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-white/10 transition-colors"></div>
-                  
-                  <div className="relative z-10 flex items-center gap-5">
-                      <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/10">
-                          <Book className="text-emerald-100" size={28} strokeWidth={1.5} />
-                      </div>
-                      <div className="text-left">
-                          <h3 className="text-white text-xl font-bold font-serif leading-tight">Kuran-ı<br/>Kerim</h3>
-                      </div>
-                  </div>
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-emerald-100 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
-                      <ArrowRight size={20} />
-                  </div>
-              </button>
+                <RefreshCw size={16} color={darkMode ? '#94a3b8' : '#78716c'} />
+              </TouchableOpacity>
+            </View>
 
-              {/* Tasbih Card */}
-              <button 
-                onClick={() => onNavigate('tasbih')}
-                className="h-40 bg-white dark:bg-night-800 rounded-[2rem] p-5 flex flex-col justify-between shadow-sm border border-stone-100 dark:border-night-700 active:scale-[0.98] transition-all group relative overflow-hidden"
-              >
-                  <div className="absolute bottom-0 right-0 w-24 h-24 bg-amber-50 dark:bg-amber-500/5 rounded-full blur-2xl -mr-6 -mb-6"></div>
-                  <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-night-900 flex items-center justify-center text-amber-600 dark:text-amber-500">
-                      <Disc size={24} strokeWidth={1.5} />
-                  </div>
-                  <div className="text-left relative z-10">
-                      <span className="text-xs text-stone-400 font-bold uppercase tracking-wider">Zikir</span>
-                      <h3 className="text-stone-800 dark:text-slate-200 text-lg font-bold">Zikirmatik</h3>
-                  </div>
-              </button>
-
-              {/* Hadith Card */}
-              <button 
-                onClick={() => onNavigate('hadith')}
-                className="h-40 bg-white dark:bg-night-800 rounded-[2rem] p-5 flex flex-col justify-between shadow-sm border border-stone-100 dark:border-night-700 active:scale-[0.98] transition-all group relative overflow-hidden"
-              >
-                  <div className="absolute bottom-0 right-0 w-24 h-24 bg-blue-50 dark:bg-blue-500/5 rounded-full blur-2xl -mr-6 -mb-6"></div>
-                  <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-night-900 flex items-center justify-center text-blue-600 dark:text-blue-500">
-                      <ScrollText size={24} strokeWidth={1.5} />
-                  </div>
-                  <div className="text-left relative z-10">
-                      <span className="text-xs text-stone-400 font-bold uppercase tracking-wider">İlim</span>
-                      <h3 className="text-stone-800 dark:text-slate-200 text-lg font-bold">Hadisler</h3>
-                  </div>
-              </button>
-
-          </section>
-
-          {/* Daily Content (Tevafuk) */}
-          <section>
-            <div className="flex items-center gap-2 mb-3 px-1">
-                <Sparkles size={16} className="text-amber-500 fill-amber-500" />
-                <span className="text-xs font-bold text-stone-400 dark:text-slate-500 tracking-widest uppercase">Günün Nasibi</span>
-            </div>
-            <TevafukCard 
-               content={tevafukContent} 
-               loading={loadingTevafuk} 
-               onRefresh={onRefreshTevafuk} 
-            />
-          </section>
-
-          {/* Esma-ul Husna Mini Widget */}
-          {dailyEsma && (
-            <button onClick={() => onNavigate('esma')} className="w-full text-left relative group overflow-hidden bg-stone-100 dark:bg-night-800 rounded-[2rem] p-6 border border-stone-200 dark:border-night-700 active:scale-[0.99] transition-all">
-                <div className="flex items-center justify-between relative z-10">
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <Activity size={14} className="text-emerald-600 dark:text-emerald-500" />
-                            <span className="text-xs font-bold text-stone-500 dark:text-slate-400 uppercase tracking-wider">Günün Esması</span>
-                        </div>
-                        <h3 className="text-emerald-950 dark:text-white font-bold text-xl">{dailyEsma.transliteration}</h3>
-                        <p className="text-stone-500 dark:text-slate-400 text-xs mt-1 line-clamp-1">{dailyEsma.meaning}</p>
-                    </div>
-                    <span className="font-arabic text-5xl text-emerald-800 dark:text-emerald-400 drop-shadow-sm">{dailyEsma.name}</span>
-                </div>
-            </button>
-          )}
-
-      </div>
-    </div>
+            <View style={styles.esmaBody}>
+              <Text style={[styles.esmaArabic, { color: darkMode ? '#34d399' : '#065f46' }]}>
+                {dailyEsma.name}
+              </Text>
+              <Text style={[styles.esmaTranslit, { color: textPrimary }]}>
+                {dailyEsma.transliteration}
+              </Text>
+              <Text style={[styles.esmaMeaning, { color: textSecondary }]}>
+                {dailyEsma.meaning}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 40,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 32,
+  },
+  greetingContainer: {
+    flex: 1,
+  },
+  arabicGreeting: {
+    fontSize: 28,
+    fontFamily: 'ScheherazadeNew_400Regular',
+    marginBottom: 4,
+  },
+  turkishGreeting: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  themeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  quranCard: {
+    height: 80,
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 12,
+    shadowColor: '#064e3b',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  quranGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  quranContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  quranIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quranTitle: {
+    color: '#ffffff',
+    fontSize: 17,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  quranArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  smallCardsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  smallCard: {
+    flex: 1,
+    height: 120,
+    borderRadius: 24,
+    padding: 16,
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  smallCardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  smallCardLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  smallCardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 2,
+  },
+  esmaCard: {
+    borderRadius: 32,
+    padding: 24,
+    borderWidth: 1,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  esmaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  esmaNumberBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  esmaNumber: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#047857',
+  },
+  esmaHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  esmaRefreshButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  esmaLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  esmaBody: {
+    alignItems: 'center',
+  },
+  esmaArabic: {
+    fontSize: 52,
+    fontFamily: 'Amiri_400Regular',
+    marginBottom: 12,
+  },
+  esmaTranslit: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  esmaMeaning: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+});
 
 export default HomeMenu;

@@ -1,94 +1,221 @@
-import React, { useState } from 'react';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Share, StyleSheet, Animated, ActivityIndicator } from 'react-native';
 import { TevafukContent } from '../types';
-import { Share2, RefreshCw, Quote } from 'lucide-react';
+import { Share2, RefreshCw, Quote } from 'lucide-react-native';
 
 interface TevafukCardProps {
   content: TevafukContent | null;
   loading: boolean;
   onRefresh: () => void;
+  darkMode?: boolean;
 }
 
-const TevafukCard: React.FC<TevafukCardProps> = ({ content, loading, onRefresh }) => {
-  const [isRevealed, setIsRevealed] = useState(true);
+const TevafukCard: React.FC<TevafukCardProps> = ({ content, loading, onRefresh, darkMode = false }) => {
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  const handleRefresh = () => {
-    setIsRevealed(false);
-    setTimeout(() => {
-        onRefresh();
-        setTimeout(() => setIsRevealed(true), 300);
-    }, 200);
+  const bgColor = darkMode ? '#1e293b' : '#ffffff';
+  const borderColor = darkMode ? '#334155' : '#f5f5f4';
+  const textPrimary = darkMode ? '#e2e8f0' : '#1c1917';
+  const textSecondary = darkMode ? '#94a3b8' : '#57534e';
+  const actionBg = darkMode ? '#0f172a' : '#fafaf9';
+
+  useEffect(() => {
+    if (loading) {
+      Animated.timing(fadeAnim, { toValue: 0.6, duration: 200, useNativeDriver: true }).start();
+    } else {
+      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+    }
+  }, [loading]);
+
+  const handleShare = async () => {
+    if (!content) return;
+    try {
+      await Share.share({
+        message: `"${content.content.turkish}"\n\n- ${content.content.source}`,
+      });
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   return (
-    <div className="w-full relative perspective-1000">
-      
-      {/* Main Card */}
-      <div className={`
-        relative w-full bg-white dark:bg-night-800 rounded-[2rem] shadow-xl shadow-stone-200/50 dark:shadow-black/40 border border-white/60 dark:border-night-700
-        transition-all duration-700 ease-out transform overflow-hidden
-        ${loading ? 'scale-[0.98] opacity-80' : 'scale-100 opacity-100'}
-        ${isRevealed ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}
-      `}>
-        
-        {/* Decorative Gradients */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-50 dark:bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-50 dark:bg-amber-500/5 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none"></div>
+    <Animated.View style={[styles.container, { backgroundColor: bgColor, borderColor, opacity: fadeAnim }]}>
+      {/* Content Container */}
+      <View style={styles.content}>
+        <View style={[styles.quoteIcon, { backgroundColor: darkMode ? 'rgba(16,185,129,0.15)' : '#ecfdf5' }]}>
+          <Quote size={20} color="#047857" />
+        </View>
 
-        {/* Content Container */}
-        <div className="p-8 flex flex-col items-center justify-center text-center relative z-10">
-          
-          <div className="mb-6 p-3 bg-emerald-50 dark:bg-night-900/80 rounded-full transition-colors border border-emerald-100/50 dark:border-night-700">
-            <Quote className="text-emerald-700 dark:text-emerald-400 w-5 h-5 opacity-80" />
-          </div>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#10b981" />
+            <Text style={[styles.loadingText, { color: textSecondary }]}>Nasip Geliyor...</Text>
+          </View>
+        ) : content ? (
+          <View style={styles.textContent}>
+            {content.content.arabic && (
+              <Text style={[styles.arabicText, { color: darkMode ? '#e2e8f0' : '#022c22' }]}>
+                {content.content.arabic}
+              </Text>
+            )}
 
-          {loading ? (
-             <div className="flex flex-col items-center animate-pulse w-full max-w-xs py-8">
-                <div className="w-full h-4 bg-slate-100 dark:bg-night-900 rounded mb-3"></div>
-                <div className="w-5/6 h-4 bg-slate-100 dark:bg-night-900 rounded mb-3"></div>
-                <div className="w-2/3 h-4 bg-slate-100 dark:bg-night-900 rounded"></div>
-             </div>
-          ) : content ? (
-            <div className="flex-1 flex flex-col justify-center w-full">
-              {content.content.arabic && (
-                <p className="font-arabic text-2xl md:text-3xl leading-[2.4] text-emerald-950 dark:text-slate-200 mb-6 dir-rtl drop-shadow-sm">
-                  {content.content.arabic}
-                </p>
-              )}
-              
-              <p className="font-sans text-lg font-medium text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
-                "{content.content.turkish}"
-              </p>
-              
-              <div className="mt-auto pt-6 border-t border-slate-100 dark:border-night-700 w-full">
-                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-500 tracking-widest uppercase">
-                  {content.content.source}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-slate-400 py-8">Bir hata oluştu.</div>
-          )}
-        </div>
+            <Text style={[styles.turkishText, { color: textSecondary }]}>
+              "{content.content.turkish}"
+            </Text>
 
-        {/* Action Bar */}
-        <div className="bg-slate-50 dark:bg-night-900/50 p-4 border-t border-slate-100 dark:border-night-700 flex justify-between items-center gap-3">
-            <button 
-                onClick={handleRefresh}
-                disabled={loading}
-                className="flex-1 flex items-center justify-center gap-2 py-3 bg-white dark:bg-night-800 rounded-xl text-stone-600 dark:text-slate-300 font-semibold text-xs uppercase tracking-wider shadow-sm border border-stone-200 dark:border-night-700 active:scale-95 transition-all hover:bg-stone-50 dark:hover:bg-night-700"
-            >
-                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-                <span>Nasibi Değiştir</span>
-            </button>
-            <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-800 dark:bg-emerald-600 rounded-xl text-white font-semibold text-xs uppercase tracking-wider shadow-md shadow-emerald-900/10 active:scale-95 transition-all hover:bg-emerald-900 dark:hover:bg-emerald-500">
-                <Share2 size={14} />
-                <span>Paylaş</span>
-            </button>
-        </div>
+            <View style={[styles.divider, { backgroundColor: borderColor }]} />
+            <Text style={styles.sourceText}>{content.content.source}</Text>
+          </View>
+        ) : (
+          <Text style={[styles.errorText, { color: textSecondary }]}>Bir hata oluştu.</Text>
+        )}
+      </View>
 
-      </div>
-    </div>
+      {/* Action Bar */}
+      <View style={[styles.actionBar, { backgroundColor: actionBg, borderTopColor: borderColor }]}>
+        <TouchableOpacity
+          onPress={onRefresh}
+          disabled={loading}
+          style={[styles.actionButton, { backgroundColor: bgColor, borderColor }]}
+          activeOpacity={0.8}
+        >
+          <RefreshCw size={14} color={textSecondary} />
+          <Text style={[styles.actionButtonText, { color: textSecondary }]}>Nasibi Değiştir</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleShare}
+          style={styles.shareButton}
+          activeOpacity={0.8}
+        >
+          <Share2 size={14} color="#ffffff" />
+          <Text style={styles.shareButtonText}>Paylaş</Text>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    borderRadius: 32,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  content: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  quoteIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  loadingContainer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 12,
+  },
+  loadingLine: {
+    height: 16,
+    borderRadius: 8,
+  },
+  loadingFull: {
+    width: '100%',
+  },
+  loading80: {
+    width: '80%',
+  },
+  loading60: {
+    width: '60%',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  textContent: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  arabicText: {
+    fontSize: 24,
+    textAlign: 'center',
+    lineHeight: 44,
+    marginBottom: 24,
+    fontFamily: 'ScheherazadeNew_400Regular',
+  },
+  turkishText: {
+    fontSize: 18,
+    textAlign: 'center',
+    lineHeight: 28,
+    fontWeight: '500',
+    marginBottom: 24,
+  },
+  divider: {
+    width: '100%',
+    height: 1,
+    marginBottom: 16,
+  },
+  sourceText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  errorText: {
+    paddingVertical: 32,
+  },
+  actionBar: {
+    flexDirection: 'row',
+    padding: 16,
+    gap: 12,
+    borderTopWidth: 1,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  actionButtonText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  shareButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#065f46',
+  },
+  shareButtonText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: '#ffffff',
+  },
+});
 
 export default TevafukCard;

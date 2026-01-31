@@ -1,74 +1,317 @@
 import React, { useMemo, useState } from 'react';
+import { View, Text, TouchableOpacity, TextInput, FlatList, StyleSheet, Dimensions, Modal } from 'react-native';
 import { getAllEsmas } from '../services/api';
-import { Search, ChevronRight, Activity } from 'lucide-react';
+import { Search, ChevronLeft, X } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { width } = Dimensions.get('window');
 
 interface EsmaLibraryProps {
     onBack: () => void;
+    darkMode?: boolean;
 }
 
-const EsmaLibrary: React.FC<EsmaLibraryProps> = ({ onBack }) => {
+const EsmaLibrary: React.FC<EsmaLibraryProps> = ({ onBack, darkMode = false }) => {
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedEsma, setSelectedEsma] = useState<typeof esmas[0] | null>(null);
     const esmas = getAllEsmas();
+
+    const bgColor = darkMode ? '#020617' : '#fcfbf9';
+    const cardBg = darkMode ? '#1e293b' : '#ffffff';
+    const borderColor = darkMode ? '#334155' : '#e7e5e4';
+    const textPrimary = darkMode ? '#ffffff' : '#1c1917';
+    const textSecondary = darkMode ? '#94a3b8' : '#78716c';
+    const inputBg = darkMode ? '#0f172a' : '#ffffff';
 
     const filteredEsmas = useMemo(() => {
         const query = searchQuery.toLowerCase().trim();
         if (!query) return esmas;
-        return esmas.filter(e => 
-            e.transliteration.toLowerCase().includes(query) || 
-            e.meaning.toLowerCase().includes(query)
+        return esmas.filter(e =>
+            e.transliteration.toLowerCase().includes(query) ||
+            e.meaning.toLowerCase().includes(query) ||
+            e.name.includes(query)
         );
     }, [esmas, searchQuery]);
 
+    const renderEsmaItem = ({ item: esma }: { item: typeof esmas[0] }) => (
+        <TouchableOpacity
+            onPress={() => setSelectedEsma(esma)}
+            style={[styles.esmaCard, { backgroundColor: cardBg, borderColor }]}
+            activeOpacity={0.9}
+        >
+            <View style={styles.cardHeader}>
+                <View style={[styles.esmaNumberBadge, { backgroundColor: darkMode ? 'rgba(16,185,129,0.2)' : '#ecfdf5' }]}>
+                    <Text style={styles.esmaNumberText}>{esma.id}</Text>
+                </View>
+                <Text style={[styles.esmaArabicCard, { color: darkMode ? '#34d399' : '#065f46' }]}>
+                    {esma.name}
+                </Text>
+            </View>
+            <Text style={[styles.esmaTranslitCard, { color: textPrimary }]}>
+                {esma.transliteration}
+            </Text>
+            <Text style={[styles.esmaMeaningCard, { color: textSecondary }]} numberOfLines={2}>
+                {esma.meaning}
+            </Text>
+        </TouchableOpacity>
+    );
+
     return (
-        <div className="min-h-screen bg-sand-50 dark:bg-night-950 animate-slide-up transition-colors duration-500 pb-12">
-            
+        <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
+            {/* Detail Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={!!selectedEsma}
+                onRequestClose={() => setSelectedEsma(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <TouchableOpacity
+                        style={styles.modalBackdrop}
+                        activeOpacity={1}
+                        onPress={() => setSelectedEsma(null)}
+                    />
+                    <View style={[styles.modalContent, { backgroundColor: darkMode ? '#0f172a' : '#ffffff' }]}>
+                        <TouchableOpacity
+                            onPress={() => setSelectedEsma(null)}
+                            style={[styles.closeButton, { backgroundColor: darkMode ? '#1e293b' : '#f5f5f4' }]}
+                        >
+                            <X size={20} color={textSecondary} />
+                        </TouchableOpacity>
+
+                        {selectedEsma && (
+                            <View style={styles.modalCenter}>
+                                <View style={[styles.modalNumberBadge, { backgroundColor: darkMode ? '#065f46' : '#ecfdf5' }]}>
+                                    <Text style={[styles.modalNumberText, { color: darkMode ? '#ffffff' : '#047857' }]}>
+                                        {selectedEsma.id}
+                                    </Text>
+                                </View>
+                                <Text style={[styles.modalArabic, { color: darkMode ? '#34d399' : '#065f46' }]}>
+                                    {selectedEsma.name}
+                                </Text>
+                                <Text style={[styles.modalTransliteration, { color: textPrimary }]}>
+                                    {selectedEsma.transliteration}
+                                </Text>
+
+                                <View style={[styles.meaningContainer, { backgroundColor: darkMode ? '#1e293b' : '#fafaf9', borderColor }]}>
+                                    <Text style={[styles.meaningLabel, { color: textSecondary }]}>ANLAMI</Text>
+                                    <Text style={[styles.meaningText, { color: textPrimary }]}>
+                                        {selectedEsma.meaning}
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
+                    </View>
+                </View>
+            </Modal>
+
             {/* Header */}
-            <div className="sticky top-0 z-20 bg-sand-50/95 dark:bg-night-950/95 backdrop-blur-md px-6 pt-6 pb-4 border-b border-stone-100 dark:border-slate-800">
-                <div className="flex items-center gap-4 mb-6">
-                    <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-600 dark:text-slate-300 transition-colors">
-                        <ChevronRight size={24} className="rotate-180" />
-                    </button>
-                    <div>
-                        <h1 className="text-2xl font-bold text-emerald-950 dark:text-emerald-400 font-serif">Esma-ül Hüsna</h1>
-                        <p className="text-xs text-stone-500 dark:text-slate-500">En güzel isimler O'nundur</p>
-                    </div>
-                </div>
+            <View style={[styles.header, { borderBottomColor: borderColor }]}>
+                <View style={styles.headerTop}>
+                    <TouchableOpacity
+                        onPress={onBack}
+                        style={[styles.backButton, { backgroundColor: darkMode ? '#1e293b' : '#f5f5f4' }]}
+                    >
+                        <ChevronLeft size={24} color={textSecondary} />
+                    </TouchableOpacity>
+                    <View style={styles.headerTitleContainer}>
+                        <Text style={[styles.headerArabic, { color: darkMode ? '#34d399' : '#065f46' }]}>
+                            أَسْمَاءُ الْحُسْنَى
+                        </Text>
+                        <Text style={[styles.headerTitle, { color: textPrimary }]}>
+                            Esma-ül Hüsna
+                        </Text>
+                    </View>
+                </View>
 
                 {/* Search */}
-                <div className="relative">
-                    <input 
-                        type="text" 
-                        placeholder="İsim veya anlam ara..." 
+                <View style={[styles.searchInput, { backgroundColor: inputBg, borderColor }]}>
+                    <Search size={18} color={textSecondary} />
+                    <TextInput
+                        placeholder="İsim veya anlam ara..."
+                        placeholderTextColor={textSecondary}
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl py-4 pl-12 pr-4 text-stone-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-stone-400"
+                        onChangeText={setSearchQuery}
+                        style={[styles.searchTextInput, { color: textPrimary }]}
                     />
-                    <Search className="absolute left-4 top-4 text-stone-400" size={20} />
-                </div>
-            </div>
+                </View>
+            </View>
 
-            {/* Grid */}
-            <div className="px-6 mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredEsmas.map((esma) => (
-                    <div key={esma.id} className="bg-white dark:bg-night-800 rounded-[2rem] p-6 shadow-sm border border-stone-100 dark:border-night-700 relative overflow-hidden group hover:shadow-lg transition-all">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50 dark:bg-emerald-900/10 rounded-full blur-2xl -mr-6 -mt-6 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/20 transition-colors"></div>
-                        
-                        <div className="flex justify-between items-start mb-4 relative z-10">
-                            <span className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-night-900 flex items-center justify-center text-emerald-700 dark:text-emerald-500 font-bold text-xs">
-                                {esma.id}
-                            </span>
-                            <span className="font-arabic text-4xl text-emerald-800 dark:text-emerald-400">{esma.name}</span>
-                        </div>
-
-                        <div className="relative z-10">
-                            <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-1">{esma.transliteration}</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{esma.meaning}</p>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
+            {/* List */}
+            <FlatList
+                data={filteredEsmas}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={renderEsmaItem}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+            />
+        </SafeAreaView>
     );
 };
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    header: {
+        paddingHorizontal: 24,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+    },
+    headerTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+        marginBottom: 16,
+    },
+    backButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerTitleContainer: {
+        flex: 1,
+    },
+    headerArabic: {
+        fontSize: 20,
+        fontFamily: 'Amiri_400Regular',
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        marginTop: 2,
+    },
+    searchInput: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    searchTextInput: {
+        flex: 1,
+        fontSize: 15,
+        padding: 0,
+    },
+    listContent: {
+        padding: 24,
+    },
+    esmaCard: {
+        padding: 18,
+        borderRadius: 20,
+        borderWidth: 1,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    esmaNumberBadge: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    esmaNumberText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#047857',
+    },
+    esmaArabicCard: {
+        fontSize: 28,
+        fontFamily: 'Amiri_400Regular',
+    },
+    esmaTranslitCard: {
+        fontSize: 17,
+        fontWeight: '700',
+        marginBottom: 6,
+    },
+    esmaMeaningCard: {
+        fontSize: 13,
+        lineHeight: 20,
+    },
+    modalOverlay: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+    },
+    modalContent: {
+        width: width - 48,
+        borderRadius: 24,
+        padding: 24,
+    },
+    closeButton: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10,
+    },
+    modalCenter: {
+        alignItems: 'center',
+        paddingTop: 8,
+    },
+    modalNumberBadge: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 14,
+    },
+    modalNumberText: {
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    modalArabic: {
+        fontSize: 44,
+        fontFamily: 'Amiri_400Regular',
+        marginBottom: 8,
+    },
+    modalTransliteration: {
+        fontSize: 20,
+        fontWeight: '700',
+        marginBottom: 16,
+    },
+    meaningContainer: {
+        width: '100%',
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    meaningLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 1,
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    meaningText: {
+        fontSize: 15,
+        fontWeight: '500',
+        textAlign: 'center',
+        lineHeight: 22,
+    },
+});
 
 export default EsmaLibrary;
