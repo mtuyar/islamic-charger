@@ -1,4 +1,4 @@
-# RuhUp - Günlük Manevi Rehberiniz
+# Ruhnevâz - Günlük Manevi Rehberiniz
 
 **Kısa Açıklama:**
 Namaz vakitleri, Kuran-ı Kerim, Zikirmatik, Esma-ül Hüsna ve Hadis-i Şerifler tek bir uygulamada. Modern, sade ve huzur veren tasarım.
@@ -7,7 +7,7 @@ Namaz vakitleri, Kuran-ı Kerim, Zikirmatik, Esma-ül Hüsna ve Hadis-i Şerifle
 
 **Detaylı Tanıtım:**
 
-RuhUp, günlük ibadetlerinizi takip etmeniz ve manevi dünyanızı zenginleştirmeniz için tasarlanmış kapsamlı bir İslami yaşam asistanıdır. Göz yormayan modern arayüzü, yumuşak renk tonları ve kullanıcı dostu özellikleri ile her an yanınızda.
+Ruhnevâz, günlük ibadetlerinizi takip etmeniz ve manevi dünyanızı zenginleştirmeniz için tasarlanmış kapsamlı bir İslami yaşam asistanıdır. Göz yormayan modern arayüzü, yumuşak renk tonları ve kullanıcı dostu özellikleri ile her an yanınızda.
 
 **Öne Çıkan Özellikler:**
 

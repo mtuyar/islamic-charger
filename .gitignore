@@ -31,6 +31,8 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.*
 .env*.local
 
 # typescript
@@ -39,3 +41,13 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# local backups
+*.bak
+
+# offline content build cache
+scripts/_cache/
+
+# App Store work files (site lives in github.com/mtuyar/ruhnevaz)
+appstore/_work/
+appstore/site/

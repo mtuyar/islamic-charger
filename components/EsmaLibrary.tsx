@@ -1,8 +1,11 @@
+import { paletteFor } from '../theme';
 import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, FlatList, StyleSheet, Dimensions, Modal } from 'react-native';
 import { getAllEsmas } from '../services/api';
 import { Search, ChevronLeft, X } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { t } from '../i18n';
+import { useSettingsStore } from '../store/useSettingsStore';
 
 const { width } = Dimensions.get('window');
 
@@ -12,16 +15,18 @@ interface EsmaLibraryProps {
 }
 
 const EsmaLibrary: React.FC<EsmaLibraryProps> = ({ onBack, darkMode = false }) => {
+  useSettingsStore(s => s.language); // re-render on language change
+  const pal = paletteFor(darkMode);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedEsma, setSelectedEsma] = useState<typeof esmas[0] | null>(null);
     const esmas = getAllEsmas();
 
-    const bgColor = darkMode ? '#020617' : '#fcfbf9';
-    const cardBg = darkMode ? '#1e293b' : '#ffffff';
-    const borderColor = darkMode ? '#334155' : '#e7e5e4';
-    const textPrimary = darkMode ? '#ffffff' : '#1c1917';
-    const textSecondary = darkMode ? '#94a3b8' : '#78716c';
-    const inputBg = darkMode ? '#0f172a' : '#ffffff';
+    const bgColor = pal.bg;
+    const cardBg = pal.card;
+    const borderColor = pal.borderStrong;
+    const textPrimary = pal.text;
+    const textSecondary = pal.textSecondary;
+    const inputBg = pal.card;
 
     const filteredEsmas = useMemo(() => {
         const query = searchQuery.toLowerCase().trim();
@@ -43,7 +48,7 @@ const EsmaLibrary: React.FC<EsmaLibraryProps> = ({ onBack, darkMode = false }) =
                 <View style={[styles.esmaNumberBadge, { backgroundColor: darkMode ? 'rgba(16,185,129,0.2)' : '#ecfdf5' }]}>
                     <Text style={styles.esmaNumberText}>{esma.id}</Text>
                 </View>
-                <Text style={[styles.esmaArabicCard, { color: darkMode ? '#34d399' : '#065f46' }]}>
+                <Text style={[styles.esmaArabicCard, { color: pal.accentText }]}>
                     {esma.name}
                 </Text>
             </View>
@@ -71,10 +76,11 @@ const EsmaLibrary: React.FC<EsmaLibraryProps> = ({ onBack, darkMode = false }) =
                         activeOpacity={1}
                         onPress={() => setSelectedEsma(null)}
                     />
-                    <View style={[styles.modalContent, { backgroundColor: darkMode ? '#0f172a' : '#ffffff' }]}>
+                    <View style={[styles.modalContent, { backgroundColor: pal.card }]}>
                         <TouchableOpacity
                             onPress={() => setSelectedEsma(null)}
-                            style={[styles.closeButton, { backgroundColor: darkMode ? '#1e293b' : '#f5f5f4' }]}
+                            accessibilityLabel={t('common.close')}
+                            style={[styles.closeButton, { backgroundColor: pal.cardAlt }]}
                         >
                             <X size={20} color={textSecondary} />
                         </TouchableOpacity>
@@ -86,7 +92,7 @@ const EsmaLibrary: React.FC<EsmaLibraryProps> = ({ onBack, darkMode = false }) =
                                         {selectedEsma.id}
                                     </Text>
                                 </View>
-                                <Text style={[styles.modalArabic, { color: darkMode ? '#34d399' : '#065f46' }]}>
+                                <Text style={[styles.modalArabic, { color: pal.accentText }]}>
                                     {selectedEsma.name}
                                 </Text>
                                 <Text style={[styles.modalTransliteration, { color: textPrimary }]}>
@@ -94,7 +100,7 @@ const EsmaLibrary: React.FC<EsmaLibraryProps> = ({ onBack, darkMode = false }) =
                                 </Text>
 
                                 <View style={[styles.meaningContainer, { backgroundColor: darkMode ? '#1e293b' : '#fafaf9', borderColor }]}>
-                                    <Text style={[styles.meaningLabel, { color: textSecondary }]}>ANLAMI</Text>
+                                    <Text style={[styles.meaningLabel, { color: textSecondary }]}>{t('esma.meaningLabel')}</Text>
                                     <Text style={[styles.meaningText, { color: textPrimary }]}>
                                         {selectedEsma.meaning}
                                     </Text>
@@ -110,16 +116,17 @@ const EsmaLibrary: React.FC<EsmaLibraryProps> = ({ onBack, darkMode = false }) =
                 <View style={styles.headerTop}>
                     <TouchableOpacity
                         onPress={onBack}
-                        style={[styles.backButton, { backgroundColor: darkMode ? '#1e293b' : '#f5f5f4' }]}
+                        accessibilityLabel={t('a11y.back')}
+                        style={[styles.backButton, { backgroundColor: pal.cardAlt }]}
                     >
                         <ChevronLeft size={24} color={textSecondary} />
                     </TouchableOpacity>
                     <View style={styles.headerTitleContainer}>
-                        <Text style={[styles.headerArabic, { color: darkMode ? '#34d399' : '#065f46' }]}>
+                        <Text style={[styles.headerArabic, { color: pal.accentText }]}>
                             أَسْمَاءُ الْحُسْنَى
                         </Text>
                         <Text style={[styles.headerTitle, { color: textPrimary }]}>
-                            Esma-ül Hüsna
+                            {t('dhikr.esma')}
                         </Text>
                     </View>
                 </View>
@@ -128,7 +135,7 @@ const EsmaLibrary: React.FC<EsmaLibraryProps> = ({ onBack, darkMode = false }) =
                 <View style={[styles.searchInput, { backgroundColor: inputBg, borderColor }]}>
                     <Search size={18} color={textSecondary} />
                     <TextInput
-                        placeholder="İsim veya anlam ara..."
+                        placeholder={t('esma.searchPlaceholder')}
                         placeholderTextColor={textSecondary}
                         value={searchQuery}
                         onChangeText={setSearchQuery}

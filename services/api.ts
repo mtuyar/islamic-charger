@@ -1,12 +1,48 @@
-import { Surah, DualSurahResponse, Hadith, TevafukContent, Esma } from '../types';
+import { Surah, QuranEdition, SurahDetailResponse, DualSurahResponse, Hadith, TevafukContent, Esma, SearchResult } from '../types';
+import { QURAN_SURAH_ASSETS, SURAH_LIST } from '../data/offlineAssets';
+import { readAssetJson } from './offlineContent';
+import { t } from '../i18n';
 
 // --- CONFIGURATION ---
-const ALQURAN_API_BASE = 'https://api.alquran.cloud/v1';
 const PRAYER_API_BASE = 'https://api.aladhan.com/v1';
 
 // Diyanet API Config (Using the key you provided)
 const DIYANET_API_BASE = 'https://acikkaynakkuran-dev.diyanet.gov.tr/api';
 const DIYANET_API_KEY = '420|kAWZgSpz1dzsBmR9Tyd60YCoQ06HZ790HktYwV989d06f994';
+
+// Juz (Cüz) start positions: surah number + first ayah of that juz
+export const JUZ_START: { surah: number; ayah: number }[] = [
+  { surah: 1, ayah: 1 },    // 1. Cüz
+  { surah: 2, ayah: 142 },  // 2. Cüz
+  { surah: 2, ayah: 253 },  // 3. Cüz
+  { surah: 3, ayah: 93 },   // 4. Cüz
+  { surah: 4, ayah: 24 },   // 5. Cüz
+  { surah: 4, ayah: 148 },  // 6. Cüz
+  { surah: 5, ayah: 82 },   // 7. Cüz
+  { surah: 6, ayah: 111 },  // 8. Cüz
+  { surah: 7, ayah: 88 },   // 9. Cüz
+  { surah: 8, ayah: 41 },   // 10. Cüz
+  { surah: 9, ayah: 93 },   // 11. Cüz
+  { surah: 11, ayah: 6 },   // 12. Cüz
+  { surah: 12, ayah: 53 },  // 13. Cüz
+  { surah: 15, ayah: 1 },   // 14. Cüz
+  { surah: 17, ayah: 1 },   // 15. Cüz
+  { surah: 18, ayah: 75 },  // 16. Cüz
+  { surah: 21, ayah: 1 },   // 17. Cüz
+  { surah: 23, ayah: 1 },   // 18. Cüz
+  { surah: 25, ayah: 21 },  // 19. Cüz
+  { surah: 27, ayah: 56 },  // 20. Cüz
+  { surah: 29, ayah: 46 },  // 21. Cüz
+  { surah: 33, ayah: 31 },  // 22. Cüz
+  { surah: 36, ayah: 28 },  // 23. Cüz
+  { surah: 39, ayah: 32 },  // 24. Cüz
+  { surah: 41, ayah: 47 },  // 25. Cüz
+  { surah: 46, ayah: 1 },   // 26. Cüz
+  { surah: 51, ayah: 31 },  // 27. Cüz
+  { surah: 58, ayah: 1 },   // 28. Cüz
+  { surah: 67, ayah: 1 },   // 29. Cüz
+  { surah: 78, ayah: 1 },   // 30. Cüz
+];
 
 // Manual mapping for Turkish Surah names to replace English ones (Fallback)
 export const TURKISH_SURAH_NAMES: { [key: number]: string } = {
@@ -24,72 +60,112 @@ export const TURKISH_SURAH_NAMES: { [key: number]: string } = {
   111: "Tebbet", 112: "İhlâs", 113: "Felâk", 114: "Nâs"
 };
 
-// --- QURAN API IMPLEMENTATION (HYBRID) ---
+// --- QURAN (embedded, offline) ---
+// Arabic (quran-simple) + Diyanet meal ship inside the app; see scripts/buildOfflineContent.py.
 
-export const getSurahList = async (): Promise<Surah[]> => {
+interface OfflineSurah { arabic: SurahDetailResponse; turkish: SurahDetailResponse }
+
+const loadSurah = (id: number): Promise<OfflineSurah> => {
+  const mod = QURAN_SURAH_ASSETS[id];
+  if (!mod) return Promise.reject(new Error(`No embedded surah ${id}`));
+  return readAssetJson<OfflineSurah>(mod);
+};
+
+let allSurahsPromise: Promise<OfflineSurah[]> | null = null;
+const loadAllSurahs = (): Promise<OfflineSurah[]> => {
+  if (!allSurahsPromise) {
+    allSurahsPromise = Promise.all(SURAH_LIST.map(s => loadSurah(s.number)));
+    allSurahsPromise.catch(() => { allSurahsPromise = null; });
+  }
+  return allSurahsPromise;
+};
+
+export const getSurahList = async (): Promise<Surah[]> => SURAH_LIST;
+
+const normalizeArabic = (text: string): string =>
+  text
+    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED\u0640]/g, '') // tüm harekeler + tatweel
+    .replace(/[أإآٱ]/g, 'ا')                     // alif varyantları
+    .replace(/ة/g, 'ه')                           // ta marbuta
+    .replace(/ى/g, 'ي')                           // alif maqsura
+    .replace(/\s+/g, ' ')                         // çoklu boşlukları tek boşluğa indir
+    .trim();
+
+/** Case- and diacritic-insensitive Turkish folding: "Namâz", "NAMAZ", "namaz" all match. */
+const foldTurkish = (text: string): string =>
+  text
+    .replace(/İ/g, 'i').replace(/I/g, 'ı')
+    .toLowerCase()
+    .replace(/[âá]/g, 'a').replace(/[îí]/g, 'i').replace(/[ûú]/g, 'u')
+    .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g').replace(/ç/g, 'c').replace(/ö/g, 'o').replace(/ü/g, 'u')
+    .replace(/[’'`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const MAX_SEARCH_RESULTS = 40;
+
+export const searchQuran = async (query: string, lang: 'tr' | 'ar' = 'tr'): Promise<SearchResult[]> => {
+  const q = lang === 'ar' ? normalizeArabic(query) : foldTurkish(query);
+  if (!q) return [];
   try {
-    throw new Error("Skipping Diyanet direct call due to likely CORS environment");
-  } catch (error) {
-    try {
-      const response = await fetch(`${ALQURAN_API_BASE}/surah`);
-      const data = await response.json();
-      return data.data.map((surah: Surah) => ({
-        ...surah,
-        englishName: TURKISH_SURAH_NAMES[surah.number] || surah.englishName, // Use Turkish Names
-        name: surah.name // Arabic Name
-      }));
-    } catch (e) {
-      console.error("Failed to fetch surah list", e);
-      return [];
+    const surahs = await loadAllSurahs();
+    const results: SearchResult[] = [];
+    for (const s of surahs) {
+      const { arabic, turkish } = s;
+      for (let i = 0; i < arabic.ayahs.length; i++) {
+        const ar = arabic.ayahs[i];
+        const tr = turkish.ayahs[i];
+        const hay = lang === 'ar' ? normalizeArabic(ar.text) : foldTurkish(tr.text);
+        if (!hay.includes(q)) continue;
+        results.push({
+          number: ar.number,
+          text: lang === 'ar' ? ar.text : tr.text,
+          numberInSurah: ar.numberInSurah,
+          arabicText: ar.text,
+          turkishText: tr.text,
+          surah: { number: arabic.number, name: arabic.name, englishName: arabic.englishName },
+        });
+        if (results.length >= MAX_SEARCH_RESULTS) return results;
+      }
     }
+    return results;
+  } catch (error) {
+    console.error("Failed to search Quran", error);
+    return [];
   }
 };
 
 export const getSurahDetails = async (id: number): Promise<DualSurahResponse | null> => {
   try {
-    const response = await fetch(`${ALQURAN_API_BASE}/surah/${id}/editions/quran-uthmani,tr.diyanet`);
-    const data = await response.json();
-
-    if (data.status === 'OK' && data.data.length === 2) {
-      const arabicData = data.data[0];
-      const turkishData = data.data[1];
-      arabicData.englishName = TURKISH_SURAH_NAMES[arabicData.number] || arabicData.englishName;
-
-      return {
-        arabic: arabicData,
-        turkish: turkishData
-      };
-    }
-    return null;
+    const { arabic, turkish } = await loadSurah(id);
+    return { arabic, turkish };
   } catch (error) {
-    console.error("Failed to fetch surah details", error);
+    console.error("Failed to load surah", error);
     return null;
   }
 };
 
 export const getRandomAyah = async (): Promise<TevafukContent | null> => {
   try {
-    const randomGlobalAyah = Math.floor(Math.random() * 6236) + 1;
-    const response = await fetch(`${ALQURAN_API_BASE}/ayah/${randomGlobalAyah}/editions/quran-uthmani,tr.diyanet`);
-    const data = await response.json();
-
-    if (data.status === 'OK' && data.data.length === 2) {
-      const arabicData = data.data[0];
-      const turkishData = data.data[1];
-      const surahName = TURKISH_SURAH_NAMES[arabicData.surah.number] || arabicData.surah.englishName;
-
-      return {
-        type: 'ayah',
-        content: {
-          arabic: arabicData.text,
-          turkish: turkishData.text,
-          source: `${surahName} Suresi, ${arabicData.numberInSurah}. Ayet`
-        }
-      };
+    // Uniform over all 6236 ayahs: pick a global number, then locate its surah.
+    let remaining = Math.floor(Math.random() * 6236);
+    let surahNumber = 1;
+    for (const s of SURAH_LIST) {
+      if (remaining < s.numberOfAyahs) { surahNumber = s.number; break; }
+      remaining -= s.numberOfAyahs;
     }
-    return null;
+    const { arabic, turkish } = await loadSurah(surahNumber);
+    const ayah = arabic.ayahs[remaining];
+    return {
+      type: 'ayah',
+      content: {
+        arabic: ayah.text,
+        turkish: turkish.ayahs[remaining].text,
+        source: t('share.ayahSource', { surah: arabic.englishName, ayah: ayah.numberInSurah }),
+      }
+    };
   } catch (error) {
-    console.error("Failed to fetch random ayah", error);
+    console.error("Failed to pick random ayah", error);
     return null;
   }
 };
@@ -226,8 +302,16 @@ export const getAllEsmas = (): Esma[] => {
 };
 
 // --- Hadith API & Data ---
-const HADITH_EDITION = 'tur-bukhari';
-const HADITH_API_BASE_URL = `https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/${HADITH_EDITION}`;
+const HADITH_CDN = 'https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions';
+// Approximate hadith counts per Turkish edition (used to pick a random number).
+const HADITH_POOLS: { id: string; name: string; max: number }[] = [
+  { id: 'tur-bukhari', name: 'Sahih-i Buhârî', max: 7563 },
+  { id: 'tur-muslim', name: 'Sahih-i Müslim', max: 3033 },
+  { id: 'tur-tirmidhi', name: 'Sünen-i Tirmizî', max: 3956 },
+  { id: 'tur-abudawud', name: 'Sünen-i Ebû Dâvûd', max: 5274 },
+  { id: 'tur-nasai', name: 'Sünen-i Nesâî', max: 5758 },
+  { id: 'tur-ibnmajah', name: 'Sünen-i İbn Mâce', max: 4341 },
+];
 
 // Comprehensive curated hadith collection (Fallback)
 const CURATED_HADITHS: Hadith[] = [
@@ -239,31 +323,30 @@ const CURATED_HADITHS: Hadith[] = [
 ];
 
 export const fetchRandomHadithFromAPI = async (): Promise<Hadith | null> => {
-  try {
-    // Bukhari has around 7563 hadiths. Picking a random one.
-    const randomId = Math.floor(Math.random() * 7000) + 1;
-    const response = await fetch(`${HADITH_API_BASE_URL}/${randomId}.json`);
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-
-    if (data && data.hadiths && data.hadiths.length > 0) {
-      const hadith = data.hadiths[0];
+  // Try up to 3 random picks across all six collections (some numbers are gaps in the API).
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const pool = HADITH_POOLS[Math.floor(Math.random() * HADITH_POOLS.length)];
+    const randomId = Math.floor(Math.random() * pool.max) + 1;
+    try {
+      const response = await fetch(`${HADITH_CDN}/${pool.id}/${randomId}.min.json`);
+      if (!response.ok) continue;
+      const data = await response.json();
+      const hadith = data?.hadiths?.[0];
+      const text: string | undefined = hadith?.text?.trim();
+      if (!text || text.length < 20 || text.length > 900) continue;
       return {
         id: randomId,
-        source: 'Sahih Buhari',
-        text: hadith.text,
+        source: pool.name,
+        text,
         topic: 'Hadis-i Şerif',
-        book: 'Buhari',
-        number: hadith.hadithnumber
+        book: pool.name,
+        number: hadith.hadithnumber,
       };
+    } catch (error) {
+      // try next
     }
-    return null;
-  } catch (error) {
-    console.error("Failed to fetch hadith from API", error);
-    return null;
   }
+  return null;
 };
 
 export const getRandomHadith = async (): Promise<TevafukContent> => {

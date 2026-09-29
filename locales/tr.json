@@ -1,0 +1,4 @@
+{
+  "CFBundleDisplayName": "Ruhnevâz",
+  "NSLocationWhenInUseUsageDescription": "Konumunuz, bulunduğunuz yere göre namaz vakitlerini ve kıble yönünü hesaplamak için kullanılır. Konum saklanmaz; dilerseniz şehrinizi elle de seçebilirsiniz."
+}

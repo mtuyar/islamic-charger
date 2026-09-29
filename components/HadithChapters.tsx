@@ -1,8 +1,13 @@
+import { paletteFor } from '../theme';
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, TextInput } from 'react-native';
 import { ArrowLeft, Search, ChevronRight, List } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { hadithService, HadithCollection, HadithChapter } from '../services/hadith';
+import { hadithService, HadithCollection, HadithChapter, collectionName, chapterDisplayName } from '../services/hadith';
+import { StateView } from './ui';
+import { useIsOnline } from '../hooks/useNetwork';
+import { useSettingsStore } from '../store/useSettingsStore';
+import { t } from '../i18n';
 
 interface HadithChaptersProps {
     collection: HadithCollection;
@@ -12,17 +17,21 @@ interface HadithChaptersProps {
 }
 
 const HadithChapters: React.FC<HadithChaptersProps> = ({ collection, onSelectChapter, onBack, darkMode }) => {
+  const pal = paletteFor(darkMode);
     const [chapters, setChapters] = useState<HadithChapter[]>([]);
     const [filteredChapters, setFilteredChapters] = useState<HadithChapter[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadFailed, setLoadFailed] = useState(false);
+    const online = useIsOnline();
+    useSettingsStore(s => s.language); // re-render on language change
     const [searchQuery, setSearchQuery] = useState('');
 
-    const bgColor = darkMode ? '#020617' : '#fcfbf9';
-    const cardBg = darkMode ? '#1e293b' : '#ffffff';
-    const borderColor = darkMode ? '#334155' : '#e5e7eb';
-    const textPrimary = darkMode ? '#ffffff' : '#1c1917';
-    const textSecondary = darkMode ? '#94a3b8' : '#78716c';
-    const inputBg = darkMode ? '#1e293b' : '#f5f5f4';
+    const bgColor = pal.bg;
+    const cardBg = pal.card;
+    const borderColor = pal.borderStrong;
+    const textPrimary = pal.text;
+    const textSecondary = pal.textSecondary;
+    const inputBg = pal.cardAlt;
 
     useEffect(() => {
         loadChapters();
@@ -35,6 +44,7 @@ const HadithChapters: React.FC<HadithChaptersProps> = ({ collection, onSelectCha
             const query = searchQuery.toLowerCase();
             const filtered = chapters.filter(chapter =>
                 chapter.name.toLowerCase().includes(query) ||
+                (chapter.nameEn ?? '').toLowerCase().includes(query) ||
                 chapter.sectionId.includes(query)
             );
             setFilteredChapters(filtered);
@@ -43,9 +53,12 @@ const HadithChapters: React.FC<HadithChaptersProps> = ({ collection, onSelectCha
 
     const loadChapters = async () => {
         setLoading(true);
+        setLoadFailed(false);
         const data = await hadithService.getChapters(collection.id);
         setChapters(data);
         setFilteredChapters(data);
+        // getChapters() returns [] when the network fetch fails (every collection has chapters)
+        setLoadFailed(data.length === 0);
         setLoading(false);
     };
 
@@ -54,14 +67,14 @@ const HadithChapters: React.FC<HadithChaptersProps> = ({ collection, onSelectCha
             style={[styles.card, { backgroundColor: cardBg, borderColor }]}
             onPress={() => onSelectChapter(item)}
         >
-            <View style={[styles.numberBadge, { backgroundColor: darkMode ? '#334155' : '#f5f5f4' }]}>
+            <View style={[styles.numberBadge, { backgroundColor: pal.border }]}>
                 <Text style={[styles.numberText, { color: textSecondary }]}>{item.sectionId}</Text>
             </View>
             <View style={styles.cardContent}>
-                <Text style={[styles.chapterName, { color: textPrimary }]}>{item.name}</Text>
+                <Text style={[styles.chapterName, { color: textPrimary }]}>{chapterDisplayName(item)}</Text>
                 {item.hadithCount && (
                     <Text style={[styles.hadithCount, { color: textSecondary }]}>
-                        {item.hadithCount} Hadis
+                        {t('hadith.count', { count: item.hadithCount })}
                     </Text>
                 )}
             </View>
@@ -75,16 +88,17 @@ const HadithChapters: React.FC<HadithChaptersProps> = ({ collection, onSelectCha
             <View style={[styles.header, { borderBottomColor: borderColor }]}>
                 <TouchableOpacity
                     onPress={onBack}
-                    style={[styles.backButton, { backgroundColor: darkMode ? '#1e293b' : '#f5f5f4' }]}
+                    accessibilityLabel={t('a11y.back')}
+                    style={[styles.backButton, { backgroundColor: pal.cardAlt }]}
                 >
                     <ArrowLeft size={24} color={textSecondary} />
                 </TouchableOpacity>
                 <View style={styles.headerTitleContainer}>
                     <Text style={[styles.collectionTitle, { color: textSecondary }]}>
-                        {collection.name}
+                        {collectionName(collection)}
                     </Text>
-                    <Text style={[styles.title, { color: darkMode ? '#34d399' : '#022c22' }]}>
-                        Bölümler
+                    <Text style={[styles.title, { color: pal.accentText }]}>
+                        {t('hadith.chapters')}
                     </Text>
                 </View>
             </View>
@@ -95,7 +109,7 @@ const HadithChapters: React.FC<HadithChaptersProps> = ({ collection, onSelectCha
                     <Search size={20} color={textSecondary} />
                     <TextInput
                         style={[styles.searchInput, { color: textPrimary }]}
-                        placeholder="Bölüm ara..."
+                        placeholder={t('hadith.searchChapters')}
                         placeholderTextColor={textSecondary}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
@@ -107,6 +121,14 @@ const HadithChapters: React.FC<HadithChaptersProps> = ({ collection, onSelectCha
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color="#10b981" />
                 </View>
+            ) : loadFailed ? (
+                <View style={styles.loadingContainer}>
+                    <StateView
+                        kind={online ? 'error' : 'offline'}
+                        message={t('common.loadFailed')}
+                        onRetry={loadChapters}
+                    />
+                </View>
             ) : (
                 <FlatList
                     data={filteredChapters}
@@ -117,7 +139,7 @@ const HadithChapters: React.FC<HadithChaptersProps> = ({ collection, onSelectCha
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Text style={[styles.emptyText, { color: textSecondary }]}>
-                                Bölüm bulunamadı.
+                                {t('hadith.noChapters')}
                             </Text>
                         </View>
                     }

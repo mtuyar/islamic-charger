@@ -112,7 +112,6 @@ export const SECTION_MAPPINGS: { [key: string]: string } = {
     "The Book of Zakat": "Zekat Kitabı",
     "The Book of Fasting ": "Oruç Kitabı",
     "The Book of Pilgrimage": "Hac Kitabı",
-    "The Book of Marriage": "Nikah Kitabı",
     "The Book of Suckling": "Süt Emzirme",
     "The Book of Divorce ": "Boşanma Kitabı",
     "The Book of Invoking Curses": "Lian",
