@@ -152,18 +152,28 @@ def metadata():
 
     # Age rating: everything NONE / false -> 4+
     ar = call('GET', f'/appInfos/{iid}/ageRatingDeclaration')['data']
-    attrs = {}
-    for k, v in ar['attributes'].items():
-        if isinstance(v, bool) or k in ('gambling', 'unrestrictedWebAccess', 'lootBox', 'messagingAndChat',
-                                         'parentalControls', 'ageAssurance', 'userGeneratedContent',
-                                         'advertising', 'healthOrWellnessTopics', 'seventeenPlus'):
-            attrs[k] = False
-        elif k in ('kidsAgeBand', 'ageRatingOverride', 'ageRatingOverrideV2', 'koreaAgeRatingOverride',
-                   'developerAgeRatingInfoUrl'):
-            continue
-        else:
-            attrs[k] = 'NONE'
-    call('PATCH', f"/ageRatingDeclarations/{ar['id']}", **body('ageRatingDeclarations', attrs, ar['id']))
+    yes_no = ('advertising', 'gambling', 'healthOrWellnessTopics', 'lootBox', 'messagingAndChat',
+              'parentalControls', 'ageAssurance', 'socialMedia', 'socialMediaAgeRestricted',
+              'unrestrictedWebAccess', 'userGeneratedContent')
+    frequency = ('alcoholTobaccoOrDrugUseOrReferences', 'contests', 'gamblingSimulated', 'gunsOrOtherWeapons',
+                 'medicalOrTreatmentInformation', 'profanityOrCrudeHumor', 'sexualContentGraphicAndNudity',
+                 'sexualContentOrNudity', 'horrorOrFearThemes', 'matureOrSuggestiveThemes',
+                 'violenceCartoonOrFantasy', 'violenceRealisticProlongedGraphicOrSadistic', 'violenceRealistic')
+    attrs = {k: False for k in yes_no if k in ar['attributes']}
+    attrs.update({k: 'NONE' for k in frequency if k in ar['attributes']})
+    # Questions Apple adds later come back as null; the API tells us if one should be a boolean.
+    for _ in range(5):
+        r = S.patch(f"{API}/ageRatingDeclarations/{ar['id']}", headers={'Authorization': f'Bearer {token()}'},
+                    **body('ageRatingDeclarations', attrs, ar['id']))
+        if r.ok:
+            break
+        wrong = [e['source']['pointer'].rsplit('/', 1)[-1] for e in r.json().get('errors', [])
+                 if 'Expected a BOOLEAN' in e.get('detail', '')]
+        if not wrong:
+            raise SystemExit(f'age rating -> {r.status_code}\n{r.text[:2000]}')
+        attrs.update({k: False for k in wrong})
+    else:
+        raise SystemExit('age rating: gave up')
     print('age rating ok')
 
     # Review details
@@ -177,6 +187,33 @@ def metadata():
         call('POST', '/appStoreReviewDetails', **body('appStoreReviewDetails', rattrs,
                                                       rels={'appStoreVersion': ('appStoreVersions', vid)}))
     print('review details ok')
+
+
+def pricing():
+    """Free, available in every territory (and new ones)."""
+    aid = app_id()
+    points = call('GET', f'/apps/{aid}/appPricePoints', params={'filter[territory]': 'USA', 'limit': 200})['data']
+    free = next(p for p in points if float(p['attributes']['customerPrice']) == 0)
+    call('POST', '/appPriceSchedules', json={
+        'data': {'type': 'appPriceSchedules', 'relationships': {
+            'app': {'data': {'type': 'apps', 'id': aid}},
+            'baseTerritory': {'data': {'type': 'territories', 'id': 'USA'}},
+            'manualPrices': {'data': [{'type': 'appPrices', 'id': '${free}'}]}}},
+        'included': [{'type': 'appPrices', 'id': '${free}', 'attributes': {'startDate': None},
+                      'relationships': {'appPricePoint': {'data': {'type': 'appPricePoints', 'id': free['id']}}}}]})
+    print('price: free')
+
+    territories = [t['id'] for t in call('GET', '/territories', params={'limit': 200})['data']]
+    call('POST', API.replace('/v1', '/v2') + '/appAvailabilities', json={
+        'data': {'type': 'appAvailabilities', 'attributes': {'availableInNewTerritories': True},
+                 'relationships': {
+                     'app': {'data': {'type': 'apps', 'id': aid}},
+                     'territoryAvailabilities': {'data': [{'type': 'territoryAvailabilities', 'id': f'${{{t}}}'}
+                                                          for t in territories]}}},
+        'included': [{'type': 'territoryAvailabilities', 'id': f'${{{t}}}', 'attributes': {'available': True},
+                      'relationships': {'territory': {'data': {'type': 'territories', 'id': t}}}}
+                     for t in territories]})
+    print(f'availability: {len(territories)} territories')
 
 
 def screenshots():
@@ -229,4 +266,5 @@ def submit():
 
 if __name__ == '__main__':
     step = sys.argv[1] if len(sys.argv) > 1 else 'status'
-    {'status': status, 'metadata': metadata, 'screenshots': screenshots, 'submit': submit}[step]()
+    {'status': status, 'metadata': metadata, 'pricing': pricing, 'screenshots': screenshots,
+     'submit': submit}[step]()

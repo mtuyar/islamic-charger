@@ -51,3 +51,6 @@ scripts/_cache/
 # App Store work files (site lives in github.com/mtuyar/ruhnevaz)
 appstore/_work/
 appstore/site/
+
+# python bytecode
+__pycache__/

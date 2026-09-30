@@ -23,8 +23,9 @@ export default {
       // iPhone-only for 1.0: runs on iPad in compatibility mode, no iPad review/screenshots.
       supportsTablet: false,
       bundleIdentifier: BUNDLE_ID,
-      buildNumber: '1',
-      appleTeamId: '669M7S46LW',
+      buildNumber: '3',
+      // Team ID from the distribution certificate / provisioning profiles.
+      appleTeamId: 'T465DSL484',
       entitlements: {
         'com.apple.security.application-groups': [APP_GROUP],
       },
@@ -105,7 +106,8 @@ export default {
         },
       ],
       'expo-localization',
-      // expo-sensors isn't used (qibla uses expo-location heading); drop its motion string.
+      // expo-sensors isn't used (qibla uses expo-location heading). It is excluded from
+      // autolinking in package.json; this keeps its generic motion string out of Info.plist.
       ['expo-sensors', { motionPermission: false }],
       [
         'expo-audio',

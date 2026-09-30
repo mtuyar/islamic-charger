@@ -217,7 +217,7 @@ const tr = {
     pagesOffline: 'Mushaf sayfaları internetten yüklenir. Çevrimdışıyken Meal veya Hafız görünümünü kullanabilirsin.',
     juzLabel: 'Cüz',
     stop: 'Durdur',
-    percent: '%{{value}}',
+    percent: '%%{value}',
   },
   dhikr: {
     title: 'Zikir',
