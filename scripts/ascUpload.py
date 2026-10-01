@@ -41,7 +41,14 @@ S = requests.Session()
 
 def call(method, path, **kw):
     url = path if path.startswith('http') else API + path
-    r = S.request(method, url, headers={'Authorization': f'Bearer {token()}'}, **kw)
+    for attempt in range(5):  # flaky connections: retry resets/timeouts
+        try:
+            r = S.request(method, url, headers={'Authorization': f'Bearer {token()}'}, timeout=60, **kw)
+            break
+        except requests.exceptions.RequestException:
+            if attempt == 4:
+                raise
+            time.sleep(3 * (attempt + 1))
     if r.status_code >= 400:
         raise SystemExit(f'{method} {path} -> {r.status_code}\n{r.text[:2000]}')
     return r.json() if r.content else {}
@@ -249,17 +256,25 @@ def screenshots():
 def submit():
     aid = app_id()
     vid = editable_version(aid)
-    builds = call('GET', '/builds', params={'filter[app]': aid, 'filter[processingState]': 'VALID',
-                                             'sort': '-uploadedDate', 'limit': 1})['data']
+    params = {'filter[app]': aid, 'filter[processingState]': 'VALID', 'sort': '-uploadedDate', 'limit': 1}
+    if os.environ.get('ASC_BUILD'):
+        params['filter[version]'] = os.environ['ASC_BUILD']
+    builds = call('GET', '/builds', params=params)['data']
     if not builds:
         raise SystemExit('No processed build yet.')
     bid = builds[0]['id']
     call('PATCH', f'/appStoreVersions/{vid}/relationships/build', json={'data': {'type': 'builds', 'id': bid}})
     print('build attached', builds[0]['attributes']['version'])
-    sub = call('POST', '/reviewSubmissions', **body('reviewSubmissions', {'platform': 'IOS'},
-                                                    rels={'app': ('apps', aid)}))['data']
-    call('POST', '/reviewSubmissionItems', **body('reviewSubmissionItems', rels={
-        'reviewSubmission': ('reviewSubmissions', sub['id']), 'appStoreVersion': ('appStoreVersions', vid)}))
+    # After a rejection the old submission sits in UNRESOLVED_ISSUES and is resubmitted as is.
+    open_subs = [s for s in call('GET', '/reviewSubmissions', params={'filter[app]': aid})['data']
+                 if s['attributes']['state'] in ('UNRESOLVED_ISSUES', 'READY_FOR_REVIEW')]
+    if open_subs:
+        sub = open_subs[0]
+    else:
+        sub = call('POST', '/reviewSubmissions', **body('reviewSubmissions', {'platform': 'IOS'},
+                                                        rels={'app': ('apps', aid)}))['data']
+        call('POST', '/reviewSubmissionItems', **body('reviewSubmissionItems', rels={
+            'reviewSubmission': ('reviewSubmissions', sub['id']), 'appStoreVersion': ('appStoreVersions', vid)}))
     call('PATCH', f"/reviewSubmissions/{sub['id']}", **body('reviewSubmissions', {'submitted': True}, sub['id']))
     print('submitted for review')
 

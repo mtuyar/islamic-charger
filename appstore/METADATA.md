@@ -227,6 +227,9 @@ Sonuç etiketi: **Data Not Collected / Veri Toplanmıyor**
 
 **Notlar**
 ```
+BUILD 4 — FIX FOR THE PREVIOUS REJECTION (2.1(a), launch crash on iPadOS 27)
+The app now adopts the UIScene lifecycle, which iOS/iPadOS 27 requires for apps built with the iOS 27 SDK. Launch was verified on iPad Air 11-inch (M3) and iPhone. Thank you for the report.
+
 Ruhnevâz is a free, non-commercial Islamic companion app (Turkish and English). No account, no login, no ads, no in-app purchases, no analytics.
 
 HOW TO TEST
