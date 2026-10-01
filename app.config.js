@@ -23,7 +23,7 @@ export default {
       // iPhone-only for 1.0: runs on iPad in compatibility mode, no iPad review/screenshots.
       supportsTablet: false,
       bundleIdentifier: BUNDLE_ID,
-      buildNumber: '3',
+      buildNumber: '4',
       // Team ID from the distribution certificate / provisioning profiles.
       appleTeamId: 'T465DSL484',
       entitlements: {
@@ -116,6 +116,8 @@ export default {
         },
       ],
       '@bacons/apple-targets',
+      // UIScene lifecycle + pod deployment targets for Xcode 27 / iOS 27 SDK.
+      './plugins/withIos27',
       [
         'react-native-android-widget',
         {
