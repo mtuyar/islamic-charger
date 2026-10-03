@@ -74,6 +74,11 @@ export default {
         'android.permission.RECORD_AUDIO',
         'android.permission.READ_EXTERNAL_STORAGE',
         'android.permission.WRITE_EXTERNAL_STORAGE',
+        // expo-audio only starts its media foreground service for lock-screen controls
+        // (setActiveForLockScreen), which the app never enables. Without these Play does
+        // not ask for a foreground-service declaration + demo video.
+        'android.permission.FOREGROUND_SERVICE',
+        'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK',
       ],
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
