@@ -68,6 +68,13 @@ export default {
       package: BUNDLE_ID,
       versionCode: 1,
       edgeToEdgeEnabled: true,
+      // Not used by the app (no recording; backups go through the system file picker).
+      // Keeping them would need justification in Play's data safety / permission forms.
+      blockedPermissions: [
+        'android.permission.RECORD_AUDIO',
+        'android.permission.READ_EXTERNAL_STORAGE',
+        'android.permission.WRITE_EXTERNAL_STORAGE',
+      ],
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#0f8a5f',
