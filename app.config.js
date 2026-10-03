@@ -79,6 +79,8 @@ export default {
         // not ask for a foreground-service declaration + demo video.
         'android.permission.FOREGROUND_SERVICE',
         'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK',
+        // Only the React Native dev menu needs this; release builds don't.
+        'android.permission.SYSTEM_ALERT_WINDOW',
       ],
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
